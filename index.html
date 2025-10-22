@@ -33,17 +33,18 @@
       </div>
     </div>
     <nav class="tabs">
-      <button class="tab-btn active" data-tab="tab-nuevo">Nuevo</button>
-      <button class="tab-btn" data-tab="tab-historial">Historial</button>
-      <button class="tab-btn" data-tab="tab-catalogo">Catálogo</button>
-      <button class="tab-btn" data-tab="tab-reportes">Reportes</button>
-      <button class="tab-btn" data-tab="tab-config">Config</button>
+      <!-- Cada botón abre una "página" nueva (misma index con hash) -->
+      <button class="tab-btn-link" data-href="#nuevo">Nuevo</button>
+      <button class="tab-btn-link" data-href="#historial">Historial</button>
+      <button class="tab-btn-link" data-href="#catalogo">Catálogo</button>
+      <button class="tab-btn-link" data-href="#reportes">Reportes</button>
+      <button class="tab-btn-link" data-href="#config">Config</button>
     </nav>
   </header>
 
   <main>
     <!-- TAB: NUEVO -->
-    <section id="tab-nuevo" class="tab active">
+    <section id="tab-nuevo" class="tab">
       <form id="docForm" class="panel">
         <div class="row">
           <div class="col">
@@ -78,6 +79,24 @@
           </div>
         </div>
 
+        <div class="row">
+          <div class="col">
+            <label>Método de pago</label>
+            <select id="docPago">
+              <option value="">— Seleccionar —</option>
+              <option value="ATH">ATH</option>
+              <option value="Cheque">Cheque</option>
+              <option value="Efectivo">Efectivo</option>
+              <option value="ATH Móvil">ATH Móvil</option>
+              <option value="PayPal">PayPal</option>
+            </select>
+          </div>
+          <div class="col">
+            <label>Referencia de pago (opcional)</label>
+            <input id="docPagoRef" placeholder="Ej: autorización, recibo, nota" />
+          </div>
+        </div>
+
         <div class="lines">
           <div class="lines-header">
             <strong>Ítems</strong>
@@ -98,8 +117,7 @@
                 <th class="no-print"></th>
               </tr>
             </thead>
-            <tbody id="lineasBody">
-            </tbody>
+            <tbody id="lineasBody"></tbody>
           </table>
         </div>
 
@@ -149,6 +167,7 @@
               <th>Número</th>
               <th>Fecha</th>
               <th>Cliente</th>
+              <th>Pago</th>
               <th>Total</th>
               <th>Estado</th>
               <th class="no-print">Acciones</th>
