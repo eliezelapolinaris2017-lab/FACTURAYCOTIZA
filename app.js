@@ -1,9 +1,5 @@
-/* Oasis — sesión compartida entre pestañas para no pedir el PIN al cambiar de “página”
- * Mantiene tu stack/funciones previas (pago, reportes, etc.)
- * Cambios clave:
- *  - Módulo Session con token en localStorage (expira, por defecto, a las 8h)
- *  - initAuth salta el overlay si la sesión está activa
- *  - Botón “Cerrar sesión” en Config
+/* Navegación en la MISMA pestaña + botón "Volver al inicio" en cada vista
+ * Mantiene: sesión (PIN), métodos de pago, reportes, PDF, etc.
  */
 
 const Utils = {
@@ -44,19 +40,14 @@ const Utils = {
   }
 };
 
-/* -------- Session (compartida entre pestañas con localStorage) -------- */
+/* -------- Sesión compartida -------- */
 const Session = (() => {
   const KEY = "oasis.session.v1";
-  const DURATION_MS = 8 * 60 * 60 * 1000; // 8 horas
+  const DURATION_MS = 8 * 60 * 60 * 1000; // 8h
 
   function now() { return Date.now(); }
-  function get() {
-    try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; }
-  }
-  function isActive() {
-    const s = get();
-    return !!(s && s.expiresAt > now());
-  }
+  function get() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }
+  function isActive() { const s = get(); return !!(s && s.expiresAt > now()); }
   function start() {
     const token = Utils.uuid();
     const ses = { token, issuedAt: now(), expiresAt: now() + DURATION_MS };
@@ -65,15 +56,14 @@ const Session = (() => {
   }
   function end() { localStorage.removeItem(KEY); }
   function touch() {
-    const s = get();
-    if (!s) return;
+    const s = get(); if (!s) return;
     s.expiresAt = now() + DURATION_MS;
     localStorage.setItem(KEY, JSON.stringify(s));
   }
   return { isActive, start, end, touch };
 })();
 
-/* -------- Store / Numbering / Docs / Printer / Reports (idénticos a tu versión anterior con pago) -------- */
+/* -------- Store / Numbering / Docs / Printer / Reports -------- */
 const Store = (() => {
   const KEYS = {
     settings: "oasis.settings.v1",
@@ -227,7 +217,7 @@ const Printer = (() => {
     const { name, logo, locale, currency } = businessHeader();
     const totals = Docs.calc(doc);
     const dateStr = Utils.formatDate(doc.date, locale);
-    const numStr = `${doc.prefix || ""}${doc.number}`;
+    theNum = `${doc.prefix || ""}${doc.number}`;
     const title = doc.type === "FAC" ? "Factura" : "Cotización";
     const rows = (doc.lines||[]).map(l => `
       <tr>
@@ -241,7 +231,7 @@ const Printer = (() => {
     const pago = doc.paymentMethod ? `<div><strong>Pago:</strong> ${escapeHTML(doc.paymentMethod)}${doc.paymentRef ? " — Ref: " + escapeHTML(doc.paymentRef) : ""}</div>` : "";
 
     return `<!doctype html>
-<html lang="es"><head><meta charset="utf-8"><title>${title} ${numStr}</title>
+<html lang="es"><head><meta charset="utf-8"><title>${title} ${theNum}</title>
 <style>
   body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:0;padding:10mm;}
   .p-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
@@ -262,7 +252,7 @@ const Printer = (() => {
     <div>
       <div class="p-title">${title}</div>
       <div class="p-meta">
-        <div><strong>Número:</strong> ${numStr}</div>
+        <div><strong>Número:</strong> ${theNum}</div>
         <div><strong>Fecha:</strong> ${dateStr}</div>
         <div><strong>Cliente:</strong> ${escapeHTML(doc.client||"")}</div>
         ${pago}
@@ -425,6 +415,7 @@ const UI = (() => {
     brandLogo: document.getElementById("brandLogo"),
     brandName: document.getElementById("brandName"),
 
+    // Auth
     authOverlay: document.getElementById("authOverlay"),
     authTitle: document.getElementById("authTitle"),
     authSubtitle: document.getElementById("authSubtitle"),
@@ -436,6 +427,7 @@ const UI = (() => {
     authMsg: document.getElementById("authMsg"),
     authForm: document.getElementById("authForm"),
 
+    // Nuevo
     docForm: document.getElementById("docForm"),
     docTipo: document.getElementById("docTipo"),
     docPrefijo: document.getElementById("docPrefijo"),
@@ -461,15 +453,18 @@ const UI = (() => {
     btnAnular: document.getElementById("btnAnular"),
     btnReemitir: document.getElementById("btnReemitir"),
 
+    // Historial
     histBody: document.getElementById("histBody"),
     histSearch: document.getElementById("histSearch"),
 
+    // Catálogo
     itemForm: document.getElementById("itemForm"),
     itemNombre: document.getElementById("itemNombre"),
     itemDesc: document.getElementById("itemDesc"),
     itemPrecio: document.getElementById("itemPrecio"),
     itemsBody: document.getElementById("itemsBody"),
 
+    // Reportes
     repDesde: document.getElementById("repDesde"),
     repHasta: document.getElementById("repHasta"),
     repMes: document.getElementById("repMes"),
@@ -485,6 +480,7 @@ const UI = (() => {
     btnCSV: document.getElementById("btnCSV"),
     btnPDF: document.getElementById("btnPDF"),
 
+    // Config
     cfgNombre: document.getElementById("cfgNombre"),
     cfgMoneda: document.getElementById("cfgMoneda"),
     cfgIVU: document.getElementById("cfgIVU"),
@@ -508,13 +504,17 @@ const UI = (() => {
 
   let currentDoc = null;
 
-  // Abrir cada pestaña en nueva ventana
+  /* ---- Header: navegar en la MISMA pestaña ---- */
   els.tabLinks.forEach(btn => {
     btn.addEventListener("click", () => {
       const href = btn.dataset.href || "#nuevo";
-      const url = `${location.pathname}${href}`;
-      window.open(url, "_blank");
+      location.hash = href;
     });
+  });
+
+  /* ---- Botones 'Volver al inicio' en cada panel ---- */
+  document.querySelectorAll(".btnBackHome").forEach(b => {
+    b.addEventListener("click", () => { location.hash = "#nuevo"; });
   });
 
   const HASH_TO_TAB = {
@@ -537,24 +537,17 @@ const UI = (() => {
   }
   window.addEventListener("hashchange", activateTabByHash);
 
-  // -------- AUTH con sesión persistente entre pestañas --------
+  /* -------- AUTH con sesión -------- */
   async function initAuth() {
-    // Si hay sesión activa, saltar el overlay
-    if (Session.isActive()) {
-      els.authOverlay.style.display = "none";
-      afterLogin();
-      return;
-    }
+    if (Session.isActive()) { els.authOverlay.style.display = "none"; afterLogin(); return; }
     const s = Store.get("settings");
     if (!s.pinHash) {
-      // Primer uso: crear PIN
       els.authTitle.textContent = "Protege tu app";
       els.authSubtitle.textContent = "Crea un PIN para ingresar en este dispositivo.";
       els.authLabelPIN.textContent = "Elige un PIN";
       els.authLabelPIN2.classList.remove("hidden");
       els.authPin2.classList.remove("hidden");
       els.authBtn.textContent = "Crear PIN";
-
       els.authForm.onsubmit = async (e) => {
         e.preventDefault();
         const p1 = els.authPin.value.trim();
@@ -563,12 +556,11 @@ const UI = (() => {
         if (p1 !== p2) return showAuthMsg("Los PIN no coinciden.");
         const hash = await Utils.hashPIN(p1);
         Store.setPINHash(hash);
-        Session.start(); // inicia sesión
+        Session.start();
         els.authOverlay.style.display = "none";
         afterLogin();
       };
     } else {
-      // Solicitar PIN
       els.authTitle.textContent = "Ingresa tu PIN";
       els.authSubtitle.textContent = "Este PIN se guarda localmente en tu dispositivo.";
       els.authLabelPIN.textContent = "PIN";
@@ -578,7 +570,7 @@ const UI = (() => {
         const p = els.authPin.value.trim();
         const hash = await Utils.hashPIN(p);
         if (hash === Store.get("settings").pinHash) {
-          Session.start(); // inicia sesión
+          Session.start();
           els.authOverlay.style.display = "none";
           afterLogin();
         } else {
@@ -588,19 +580,8 @@ const UI = (() => {
     }
   }
   function showAuthMsg(t) { els.authMsg.textContent = t; }
-
-  // Renovar sesión con actividad del usuario
-  ["click","keydown","touchstart"].forEach(evt => {
-    window.addEventListener(evt, () => Session.touch(), { passive: true });
-  });
-
-  // Cerrar sesión
-  if (els.btnLogout) {
-    els.btnLogout.addEventListener("click", () => {
-      Session.end();
-      location.reload();
-    });
-  }
+  ["click","keydown","touchstart"].forEach(evt => window.addEventListener(evt, () => Session.touch(), { passive:true }));
+  els.btnLogout?.addEventListener("click", () => { Session.end(); location.reload(); });
 
   function afterLogin() {
     loadBrand();
@@ -615,14 +596,11 @@ const UI = (() => {
   function loadBrand() {
     const s = Store.get("settings");
     els.brandName.textContent = s.businessName || "Oasis";
-    if (s.logoDataUrl) {
-      els.brandLogo.src = s.logoDataUrl;
-      els.brandLogo.style.display = "block";
-    } else {
-      els.brandLogo.style.display = "none";
-    }
+    if (s.logoDataUrl) { els.brandLogo.src = s.logoDataUrl; els.brandLogo.style.display="block"; }
+    else { els.brandLogo.style.display="none"; }
   }
 
+  /* ---- Nuevo ---- */
   function loadNewDoc(doc) {
     currentDoc = doc;
     const s = Store.get("settings");
@@ -720,7 +698,6 @@ const UI = (() => {
   });
 
   els.btnAddLinea.addEventListener("click", () => addLineaRow());
-
   function fillQuickAdd() {
     const items = Store.getItems();
     els.catalogQuickAdd.innerHTML =
@@ -783,6 +760,7 @@ const UI = (() => {
     alert("Número re-emitido.");
   });
 
+  /* ---- Historial ---- */
   function renderHistorial() {
     const q = els.histSearch?.value?.toLowerCase()?.trim() || "";
     const s = Store.get("settings");
@@ -812,6 +790,7 @@ const UI = (() => {
         </td>
       </tr>`;
     }).join("");
+
     els.histBody.querySelectorAll(".btn-open").forEach(b => b.onclick = () => {
       const d = Store.getDocs().find(x => x.id === b.dataset.id);
       loadNewDoc(structuredClone(d));
@@ -834,9 +813,11 @@ const UI = (() => {
       const html = Printer.docHTML(d);
       Printer.openPrint(html);
     });
+
     els.histSearch?.addEventListener("input", renderHistorial);
   }
 
+  /* ---- Catálogo ---- */
   function renderItems() {
     const items = Store.getItems();
     if (!els.itemsBody) return;
@@ -879,6 +860,7 @@ const UI = (() => {
       items.map(i => `<option value="${i.id}">${escapeHTML(i.name)} (${Utils.fmtMoney(i.price)})</option>`).join("");
   }
 
+  /* ---- Reportes ---- */
   function renderReportTable(list) {
     const s = Store.get("settings");
     if (!els.repBody) return;
@@ -901,7 +883,6 @@ const UI = (() => {
     document.getElementById("totCOT").textContent = Utils.fmtMoney(sum.totals.COT||0, s.currency, s.locale);
     document.getElementById("totALL").textContent = Utils.fmtMoney(sum.totals.ALL||0, s.currency, s.locale);
   }
-
   function runReportRange() {
     const d = els.repDesde.value;
     const h = els.repHasta.value;
@@ -932,7 +913,6 @@ const UI = (() => {
     const [y,mm] = m.split("-");
     return `${mm}/${y}`;
   }
-
   els.btnRepRango?.addEventListener("click", (e) => { e.preventDefault(); runReportRange(); });
   els.btnRepMes?.addEventListener("click", (e) => { e.preventDefault(); runReportMonth(); });
   els.btnCSV?.addEventListener("click", () => {
@@ -947,6 +927,7 @@ const UI = (() => {
     Printer.openPrint(html);
   });
 
+  /* ---- Config ---- */
   function loadConfigForm() {
     const s = Store.get("settings");
     els.cfgNombre.value = s.businessName || "";
@@ -1032,6 +1013,4 @@ const UI = (() => {
 function escapeHTML(s){ return String(s||"").replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function escapeAttr(s){ return escapeHTML(s).replace(/"/g,'&quot;'); }
 
-window.addEventListener("DOMContentLoaded", () => {
-  UI.init();
-});
+window.addEventListener("DOMContentLoaded", () => { UI.init(); });
