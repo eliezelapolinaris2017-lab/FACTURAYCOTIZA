@@ -1,7 +1,8 @@
-/* Navegación en la MISMA pestaña + botón "Volver al inicio" en cada vista
- * Mantiene: sesión (PIN), métodos de pago, reportes, PDF, etc.
+/* Drawer lateral estilo app nativa + navegación por hash en una sola página.
+ * Mantiene sesión (PIN), métodos de pago, PDF, reportes, etc.
  */
 
+// ---------- Utilidades ----------
 const Utils = {
   fmtMoney(n, currency = "USD", locale = "es-PR") {
     const v = Number(n || 0);
@@ -40,30 +41,26 @@ const Utils = {
   }
 };
 
-/* -------- Sesión compartida -------- */
+// ---------- Sesión (para no pedir PIN en cada tab) ----------
 const Session = (() => {
   const KEY = "oasis.session.v1";
   const DURATION_MS = 8 * 60 * 60 * 1000; // 8h
 
-  function now() { return Date.now(); }
-  function get() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }
-  function isActive() { const s = get(); return !!(s && s.expiresAt > now()); }
-  function start() {
+  const now = () => Date.now();
+  const get = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
+  const isActive = () => { const s = get(); return !!(s && s.expiresAt > now()); };
+  const start = () => {
     const token = Utils.uuid();
     const ses = { token, issuedAt: now(), expiresAt: now() + DURATION_MS };
     localStorage.setItem(KEY, JSON.stringify(ses));
     return ses;
-  }
-  function end() { localStorage.removeItem(KEY); }
-  function touch() {
-    const s = get(); if (!s) return;
-    s.expiresAt = now() + DURATION_MS;
-    localStorage.setItem(KEY, JSON.stringify(s));
-  }
+  };
+  const end = () => localStorage.removeItem(KEY);
+  const touch = () => { const s = get(); if (!s) return; s.expiresAt = now() + DURATION_MS; localStorage.setItem(KEY, JSON.stringify(s)); };
   return { isActive, start, end, touch };
 })();
 
-/* -------- Store / Numbering / Docs / Printer / Reports -------- */
+// ---------- Store ----------
 const Store = (() => {
   const KEYS = {
     settings: "oasis.settings.v1",
@@ -127,6 +124,7 @@ const Store = (() => {
   return { KEYS, DEFAULTS, get, set, ensureSeeds, resetAll, updateSettings, setPINHash, getDocs, saveDoc, setItems, getItems };
 })();
 
+// ---------- Numbering ----------
 const Numbering = (() => {
   function next(tipo) {
     const s = Store.get("settings");
@@ -152,6 +150,7 @@ const Numbering = (() => {
   return { next, currentPrefix, setCounter, setPrefix };
 })();
 
+// ---------- Docs ----------
 const Docs = (() => {
   function calc(doc) {
     const lines = doc.lines || [];
@@ -202,6 +201,7 @@ const Docs = (() => {
   return { calc, createEmpty, duplicateAs, reemitNumber };
 })();
 
+// ---------- Printer ----------
 const Printer = (() => {
   function businessHeader() {
     const s = Store.get("settings");
@@ -217,7 +217,7 @@ const Printer = (() => {
     const { name, logo, locale, currency } = businessHeader();
     const totals = Docs.calc(doc);
     const dateStr = Utils.formatDate(doc.date, locale);
-    theNum = `${doc.prefix || ""}${doc.number}`;
+    const numStr = `${doc.prefix || ""}${doc.number}`;
     const title = doc.type === "FAC" ? "Factura" : "Cotización";
     const rows = (doc.lines||[]).map(l => `
       <tr>
@@ -228,10 +228,11 @@ const Printer = (() => {
         <td style="text-align:right">${Utils.fmtMoney((l.price||0)*(l.qty||1), currency, locale)}</td>
       </tr>
     `).join("");
+
     const pago = doc.paymentMethod ? `<div><strong>Pago:</strong> ${escapeHTML(doc.paymentMethod)}${doc.paymentRef ? " — Ref: " + escapeHTML(doc.paymentRef) : ""}</div>` : "";
 
     return `<!doctype html>
-<html lang="es"><head><meta charset="utf-8"><title>${title} ${theNum}</title>
+<html lang="es"><head><meta charset="utf-8"><title>${title} ${numStr}</title>
 <style>
   body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:0;padding:10mm;}
   .p-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
@@ -252,7 +253,7 @@ const Printer = (() => {
     <div>
       <div class="p-title">${title}</div>
       <div class="p-meta">
-        <div><strong>Número:</strong> ${theNum}</div>
+        <div><strong>Número:</strong> ${numStr}</div>
         <div><strong>Fecha:</strong> ${dateStr}</div>
         <div><strong>Cliente:</strong> ${escapeHTML(doc.client||"")}</div>
         ${pago}
@@ -350,6 +351,7 @@ const Printer = (() => {
   return { docHTML, reportHTML, openPrint };
 })();
 
+// ---------- Reports ----------
 const Reports = (() => {
   function filterByRange(desdeISO, hastaISO) {
     const docs = Store.getDocs().filter(d => d.status !== "anulado");
@@ -407,9 +409,19 @@ const Reports = (() => {
   return { filterByRange, filterByMonth, summarize, toCSV };
 })();
 
-/* ---------------- UI / App ---------------- */
+// ---------- UI ----------
 const UI = (() => {
   const els = {
+    // Drawer
+    drawer: document.getElementById("drawer"),
+    drawerOverlay: document.getElementById("drawerOverlay"),
+    btnDrawerOpen: document.getElementById("btnDrawerOpen"),
+    btnDrawerClose: document.getElementById("btnDrawerClose"),
+    drawerItems: null, // se setea luego
+    drawerLogo: document.getElementById("drawerLogo"),
+    drawerName: document.getElementById("drawerName"),
+
+    // Tabs/Secciones
     tabLinks: document.querySelectorAll(".tab-btn-link"),
     sections: document.querySelectorAll(".tab"),
     brandLogo: document.getElementById("brandLogo"),
@@ -504,19 +516,37 @@ const UI = (() => {
 
   let currentDoc = null;
 
-  /* ---- Header: navegar en la MISMA pestaña ---- */
-  els.tabLinks.forEach(btn => {
-    btn.addEventListener("click", () => {
-      const href = btn.dataset.href || "#nuevo";
-      location.hash = href;
-    });
-  });
+  // ----- Drawer -----
+  function openDrawer() {
+    els.drawer.classList.add("open");
+    els.drawerOverlay.classList.add("open");
+    els.drawer.setAttribute("aria-hidden","false");
+  }
+  function closeDrawer() {
+    els.drawer.classList.remove("open");
+    els.drawerOverlay.classList.remove("open");
+    els.drawer.setAttribute("aria-hidden","true");
+  }
+  function toggleDrawer(){ els.drawer.classList.contains("open") ? closeDrawer() : openDrawer(); }
 
-  /* ---- Botones 'Volver al inicio' en cada panel ---- */
-  document.querySelectorAll(".btnBackHome").forEach(b => {
-    b.addEventListener("click", () => { location.hash = "#nuevo"; });
-  });
+  els.btnDrawerOpen.addEventListener("click", toggleDrawer);
+  els.btnDrawerClose.addEventListener("click", closeDrawer);
+  els.drawerOverlay.addEventListener("click", closeDrawer);
+  window.addEventListener("keydown", (e)=>{ if(e.key==="Escape") closeDrawer(); });
 
+  // Navegación desde drawer y desde tabs rápidas
+  function navTo(hash) { location.hash = hash; closeDrawer(); }
+
+  // Inicializar listeners de tabs rápidas
+  els.tabLinks.forEach(btn => btn.addEventListener("click", ()=> navTo(btn.dataset.href || "#nuevo")));
+
+  // Listeners de drawer items (después de que exista el DOM)
+  function initDrawerItems() {
+    els.drawerItems = document.querySelectorAll(".drawer-item");
+    els.drawerItems.forEach(b => b.addEventListener("click", () => navTo(b.dataset.href)));
+  }
+
+  // Marcar activo según hash
   const HASH_TO_TAB = {
     "#nuevo": "tab-nuevo",
     "#historial": "tab-historial",
@@ -524,12 +554,17 @@ const UI = (() => {
     "#reportes": "tab-reportes",
     "#config": "tab-config",
   };
+  function highlightDrawer(hash) {
+    if (!els.drawerItems) return;
+    els.drawerItems.forEach(b => b.classList.toggle("active", (b.dataset.href === hash)));
+  }
 
   function activateTabByHash() {
     const hash = location.hash || "#nuevo";
     const id = HASH_TO_TAB[hash] || "tab-nuevo";
     els.sections.forEach(s => s.classList.remove("active"));
     document.getElementById(id).classList.add("active");
+    highlightDrawer(hash);
     if (id === "tab-historial") renderHistorial();
     if (id === "tab-catalogo") renderItems();
     if (id === "tab-reportes") runReportCurrent();
@@ -537,7 +572,7 @@ const UI = (() => {
   }
   window.addEventListener("hashchange", activateTabByHash);
 
-  /* -------- AUTH con sesión -------- */
+  // -------- AUTH / PIN --------
   async function initAuth() {
     if (Session.isActive()) { els.authOverlay.style.display = "none"; afterLogin(); return; }
     const s = Store.get("settings");
@@ -583,7 +618,9 @@ const UI = (() => {
   ["click","keydown","touchstart"].forEach(evt => window.addEventListener(evt, () => Session.touch(), { passive:true }));
   els.btnLogout?.addEventListener("click", () => { Session.end(); location.reload(); });
 
+  // -------- Post-login --------
   function afterLogin() {
+    initDrawerItems();
     loadBrand();
     loadNewDoc(Docs.createEmpty());
     renderItems();
@@ -595,12 +632,17 @@ const UI = (() => {
 
   function loadBrand() {
     const s = Store.get("settings");
+    // Header
     els.brandName.textContent = s.businessName || "Oasis";
     if (s.logoDataUrl) { els.brandLogo.src = s.logoDataUrl; els.brandLogo.style.display="block"; }
     else { els.brandLogo.style.display="none"; }
+    // Drawer
+    els.drawerName.textContent = s.businessName || "Oasis";
+    if (s.logoDataUrl) { els.drawerLogo.src = s.logoDataUrl; els.drawerLogo.style.display="block"; }
+    else { els.drawerLogo.style.display="none"; }
   }
 
-  /* ---- Nuevo ---- */
+  // ---- NUEVO ----
   function loadNewDoc(doc) {
     currentDoc = doc;
     const s = Store.get("settings");
@@ -698,6 +740,7 @@ const UI = (() => {
   });
 
   els.btnAddLinea.addEventListener("click", () => addLineaRow());
+
   function fillQuickAdd() {
     const items = Store.getItems();
     els.catalogQuickAdd.innerHTML =
@@ -760,7 +803,7 @@ const UI = (() => {
     alert("Número re-emitido.");
   });
 
-  /* ---- Historial ---- */
+  // ---- Historial ----
   function renderHistorial() {
     const q = els.histSearch?.value?.toLowerCase()?.trim() || "";
     const s = Store.get("settings");
@@ -790,7 +833,6 @@ const UI = (() => {
         </td>
       </tr>`;
     }).join("");
-
     els.histBody.querySelectorAll(".btn-open").forEach(b => b.onclick = () => {
       const d = Store.getDocs().find(x => x.id === b.dataset.id);
       loadNewDoc(structuredClone(d));
@@ -813,11 +855,10 @@ const UI = (() => {
       const html = Printer.docHTML(d);
       Printer.openPrint(html);
     });
-
     els.histSearch?.addEventListener("input", renderHistorial);
   }
 
-  /* ---- Catálogo ---- */
+  // ---- Catálogo ----
   function renderItems() {
     const items = Store.getItems();
     if (!els.itemsBody) return;
@@ -829,7 +870,6 @@ const UI = (() => {
         <td class="no-print"><button class="btn i-del" data-id="${it.id}">Eliminar</button></td>
       </tr>
     `).join("");
-
     els.itemsBody.querySelectorAll(".i-name, .i-desc, .i-price").forEach(inp => {
       inp.addEventListener("change", () => {
         const id = inp.dataset.id;
@@ -860,7 +900,7 @@ const UI = (() => {
       items.map(i => `<option value="${i.id}">${escapeHTML(i.name)} (${Utils.fmtMoney(i.price)})</option>`).join("");
   }
 
-  /* ---- Reportes ---- */
+  // ---- Reportes ----
   function renderReportTable(list) {
     const s = Store.get("settings");
     if (!els.repBody) return;
@@ -913,6 +953,7 @@ const UI = (() => {
     const [y,mm] = m.split("-");
     return `${mm}/${y}`;
   }
+
   els.btnRepRango?.addEventListener("click", (e) => { e.preventDefault(); runReportRange(); });
   els.btnRepMes?.addEventListener("click", (e) => { e.preventDefault(); runReportMonth(); });
   els.btnCSV?.addEventListener("click", () => {
@@ -927,7 +968,7 @@ const UI = (() => {
     Printer.openPrint(html);
   });
 
-  /* ---- Config ---- */
+  // ---- Config ----
   function loadConfigForm() {
     const s = Store.get("settings");
     els.cfgNombre.value = s.businessName || "";
@@ -1009,8 +1050,9 @@ const UI = (() => {
   return { init };
 })();
 
-/* Helpers */
+// ---------- Helpers ----------
 function escapeHTML(s){ return String(s||"").replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function escapeAttr(s){ return escapeHTML(s).replace(/"/g,'&quot;'); }
 
-window.addEventListener("DOMContentLoaded", () => { UI.init(); });
+// ---------- Arranque ----------
+window.addEventListener("DOMContentLoaded", () => UI.init());
