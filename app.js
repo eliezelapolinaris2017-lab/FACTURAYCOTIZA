@@ -1,9 +1,10 @@
 /* Oasis — App 100% local (HTML+CSS+JS puro)
- * Módulos: Store, Numbering, Docs, Printer, Reports, UI
+ * Vista estilo "páginas": cada botón del header abre index.html con hash (#nuevo,#historial,#catalogo,#reportes,#config)
  * Claves de localStorage:
  *  - oasis.settings.v1
  *  - oasis.items.v1
  *  - oasis.docs.v1
+ * Ahora con método de pago: ATH, Cheque, Efectivo, ATH Móvil, PayPal
  */
 
 // ---------- Utilidades ----------
@@ -13,7 +14,7 @@ const Utils = {
     return new Intl.NumberFormat(locale, { style: "currency", currency }).format(v);
   },
   toNumber(v) {
-    const n = parseFloat(String(v).replace(",", ".")); // tolerante
+    const n = parseFloat(String(v).replace(",", "."));
     return isNaN(n) ? 0 : n;
   },
   todayISO() {
@@ -27,7 +28,6 @@ const Utils = {
     );
   },
   async hashPIN(pin) {
-    // SHA-256 del PIN (texto) -> hex
     const enc = new TextEncoder().encode(pin);
     const buf = await crypto.subtle.digest("SHA-256", enc);
     return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
@@ -63,7 +63,7 @@ const Store = (() => {
       prefixes: { FAC: "FAC-", COT: "COT-" },
       counters: { FAC: 1, COT: 1 },
       logoDataUrl: "",
-      pinHash: "", // se rellena al primer inicio
+      pinHash: "",
     },
     items: [
       { id: Utils.uuid(), name: "Servicio básico", desc: "Mano de obra", price: 50 },
@@ -77,9 +77,7 @@ const Store = (() => {
     if (!raw) return null;
     try { return JSON.parse(raw); } catch { return null; }
   }
-  function set(key, val) {
-    localStorage.setItem(KEYS[key], JSON.stringify(val));
-  }
+  function set(key, val) { localStorage.setItem(KEYS[key], JSON.stringify(val)); }
   function ensureSeeds() {
     if (!get("settings")) set("settings", DEFAULTS.settings);
     if (!get("items")) set("items", DEFAULTS.items);
@@ -158,7 +156,7 @@ const Docs = (() => {
     const s = Store.get("settings");
     return {
       id: Utils.uuid(),
-      type: "COT", // COT o FAC
+      type: "COT",
       number: Numbering.next("COT"),
       prefix: Numbering.currentPrefix("COT"),
       date: Utils.todayISO(),
@@ -167,7 +165,9 @@ const Docs = (() => {
       lines: [],
       discountPct: 0,
       taxPct: s.taxPercent,
-      status: "borrador" // borrador | final | anulado
+      status: "borrador",
+      paymentMethod: "",  // NUEVO
+      paymentRef: ""      // NUEVO
     };
   }
 
@@ -188,19 +188,7 @@ const Docs = (() => {
     return doc;
   }
 
-  function annul(doc) {
-    doc.status = "anulado";
-    Store.saveDoc(doc);
-    return doc;
-  }
-
-  function finalize(doc) {
-    doc.status = "final";
-    Store.saveDoc(doc);
-    return doc;
-  }
-
-  return { calc, createEmpty, duplicateAs, reemitNumber, annul, finalize };
+  return { calc, createEmpty, duplicateAs, reemitNumber };
 })();
 
 // ---------- Printer ----------
@@ -232,6 +220,8 @@ const Printer = (() => {
       </tr>
     `).join("");
 
+    const pago = doc.paymentMethod ? `<div><strong>Pago:</strong> ${escapeHTML(doc.paymentMethod)}${doc.paymentRef ? " — Ref: " + escapeHTML(doc.paymentRef) : ""}</div>` : "";
+
     return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><title>${title} ${numStr}</title>
 <style>
@@ -257,6 +247,7 @@ const Printer = (() => {
         <div><strong>Número:</strong> ${numStr}</div>
         <div><strong>Fecha:</strong> ${dateStr}</div>
         <div><strong>Cliente:</strong> ${escapeHTML(doc.client||"")}</div>
+        ${pago}
         <div><strong>Estado:</strong> ${doc.status}</div>
       </div>
     </div>
@@ -321,9 +312,9 @@ const Printer = (() => {
     <div>
       <div class="p-title">Reporte — ${rangeLabel}</div>
       <div class="p-summary">
-        FAC: ${totals.counts.FAC} | ${Utils.fmtMoney(totals.totals.FAC, currency, locale)} &nbsp;•&nbsp;
-        COT: ${totals.counts.COT} | ${Utils.fmtMoney(totals.totals.COT, currency, locale)} &nbsp;•&nbsp;
-        Total: ${totals.counts.ALL} | ${Utils.fmtMoney(totals.totals.ALL, currency, locale)}
+        FAC: ${totals.counts.FAC||0} | ${Utils.fmtMoney(totals.totals.FAC||0, currency, locale)} &nbsp;•&nbsp;
+        COT: ${totals.counts.COT||0} | ${Utils.fmtMoney(totals.totals.COT||0, currency, locale)} &nbsp;•&nbsp;
+        Total: ${totals.counts.ALL||0} | ${Utils.fmtMoney(totals.totals.ALL||0, currency, locale)}
       </div>
     </div>
     <div style="text-align:right">
@@ -369,7 +360,7 @@ const Reports = (() => {
   function filterByMonth(yyyyMM) {
     const [y, m] = yyyyMM.split("-").map(Number);
     const desde = `${y}-${String(m).padStart(2,"0")}-01`;
-    const hasta = new Date(y, m, 0); // último día del mes
+    const hasta = new Date(y, m, 0);
     const hastaISO = `${hasta.getFullYear()}-${String(hasta.getMonth()+1).padStart(2,"0")}-${String(hasta.getDate()).padStart(2,"0")}`;
     return filterByRange(desde, hastaISO);
   }
@@ -386,8 +377,8 @@ const Reports = (() => {
   }
 
   function toCSV(list) {
-    const s = Store.get("settings");
-    const lines = [["tipo","numero","fecha","cliente","subtotal","descuento","ivu","total","estado"]];
+    // Añadimos columna "pago" y "pago_ref"
+    const lines = [["tipo","numero","fecha","cliente","subtotal","descuento","ivu","total","estado","pago","pago_ref"]];
     list.forEach(d => {
       const c = Docs.calc(d);
       lines.push([
@@ -399,7 +390,9 @@ const Reports = (() => {
         c.descAmt.toFixed(2),
         c.taxAmt.toFixed(2),
         c.total.toFixed(2),
-        d.status
+        d.status,
+        d.paymentMethod||"",
+        d.paymentRef||""
       ]);
     });
     return lines.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
@@ -412,8 +405,12 @@ const Reports = (() => {
 const UI = (() => {
   // Elementos
   const els = {
-    tabs: document.querySelectorAll(".tab-btn"),
+    // Header links
+    tabLinks: document.querySelectorAll(".tab-btn-link"),
+
+    // Secciones
     sections: document.querySelectorAll(".tab"),
+    // Branding
     brandLogo: document.getElementById("brandLogo"),
     brandName: document.getElementById("brandName"),
 
@@ -437,6 +434,8 @@ const UI = (() => {
     docFecha: document.getElementById("docFecha"),
     docCliente: document.getElementById("docCliente"),
     docNotas: document.getElementById("docNotas"),
+    docPago: document.getElementById("docPago"),
+    docPagoRef: document.getElementById("docPagoRef"),
     docDescuento: document.getElementById("docDescuento"),
     docImpuesto: document.getElementById("docImpuesto"),
     lineasBody: document.getElementById("lineasBody"),
@@ -501,22 +500,38 @@ const UI = (() => {
     btnReset: document.getElementById("btnReset"),
   };
 
-  // Estado
   let currentDoc = null;
 
-  // ---- Navegación tabs
-  els.tabs.forEach(btn => btn.addEventListener("click", () => {
-    els.tabs.forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    const id = btn.dataset.tab;
+  // ----- Header: abrir nueva "página" (hash) -----
+  els.tabLinks.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const href = btn.dataset.href || "#nuevo";
+      const url = `${location.pathname}${href}`;
+      window.open(url, "_blank");
+    });
+  });
+
+  // ----- Manejo de hash -> activar sección correcta -----
+  const HASH_TO_TAB = {
+    "#nuevo": "tab-nuevo",
+    "#historial": "tab-historial",
+    "#catalogo": "tab-catalogo",
+    "#reportes": "tab-reportes",
+    "#config": "tab-config",
+  };
+
+  function activateTabByHash() {
+    const hash = location.hash || "#nuevo";
+    const id = HASH_TO_TAB[hash] || "tab-nuevo";
     els.sections.forEach(s => s.classList.remove("active"));
     document.getElementById(id).classList.add("active");
-
     if (id === "tab-historial") renderHistorial();
     if (id === "tab-catalogo") renderItems();
     if (id === "tab-reportes") runReportCurrent();
     if (id === "tab-config") loadConfigForm();
-  }));
+  }
+
+  window.addEventListener("hashchange", activateTabByHash);
 
   // ---- Auth / PIN
   async function initAuth() {
@@ -570,6 +585,7 @@ const UI = (() => {
     fillQuickAdd();
     renderHistorial();
     loadConfigForm();
+    activateTabByHash();
   }
 
   // ---- Marca (nombre/logo en header)
@@ -594,6 +610,8 @@ const UI = (() => {
     els.docFecha.value = doc.date || Utils.todayISO();
     els.docCliente.value = doc.client || "";
     els.docNotas.value = doc.notes || "";
+    els.docPago.value = doc.paymentMethod || "";
+    els.docPagoRef.value = doc.paymentRef || "";
     els.docDescuento.value = doc.discountPct ?? 0;
     els.docImpuesto.value = doc.taxPct ?? s.taxPercent;
     els.lineasBody.innerHTML = "";
@@ -604,8 +622,6 @@ const UI = (() => {
   }
 
   function updateDocButtons() {
-    // Mostrar/ocultar según estado
-    const isFinal = currentDoc.status === "final";
     const isAnnul = currentDoc.status === "anulado";
     els.btnAnular.disabled = isAnnul;
     els.btnReemitir.disabled = isAnnul;
@@ -634,23 +650,20 @@ const UI = (() => {
       updateTotals();
     };
     [priceEl, qtyEl, nameEl, descEl].forEach(el => el.addEventListener("input", recalcLine));
-    tr.querySelector(".btn-del").addEventListener("click", () => {
-      tr.remove(); updateTotals();
-    });
+    tr.querySelector(".btn-del").addEventListener("click", () => { tr.remove(); updateTotals(); });
     els.lineasBody.appendChild(tr);
     recalcLine();
   }
 
   function collectDocFromForm() {
-    const lines = [...els.lineasBody.querySelectorAll("tr")].map(tr => {
-      return {
-        name: tr.querySelector(".l-name").value.trim(),
-        desc: tr.querySelector(".l-desc").value.trim(),
-        price: Utils.toNumber(tr.querySelector(".l-price").value),
-        qty: Utils.toNumber(tr.querySelector(".l-qty").value || 1)
-      };
-    }).filter(l => l.name || l.desc || l.price);
-    const doc = {
+    const lines = [...els.lineasBody.querySelectorAll("tr")].map(tr => ({
+      name: tr.querySelector(".l-name").value.trim(),
+      desc: tr.querySelector(".l-desc").value.trim(),
+      price: Utils.toNumber(tr.querySelector(".l-price").value),
+      qty: Utils.toNumber(tr.querySelector(".l-qty").value || 1)
+    })).filter(l => l.name || l.desc || l.price);
+
+    return {
       ...currentDoc,
       type: els.docTipo.value,
       prefix: els.docPrefijo.value.trim() || Numbering.currentPrefix(els.docTipo.value),
@@ -658,11 +671,12 @@ const UI = (() => {
       date: els.docFecha.value || Utils.todayISO(),
       client: els.docCliente.value.trim(),
       notes: els.docNotas.value.trim(),
+      paymentMethod: els.docPago.value || "",
+      paymentRef: els.docPagoRef.value.trim() || "",
       discountPct: Utils.toNumber(els.docDescuento.value || 0),
       taxPct: Utils.toNumber(els.docImpuesto.value || 0),
       lines
     };
-    return doc;
   }
 
   function updateTotals() {
@@ -679,7 +693,7 @@ const UI = (() => {
   els.docTipo.addEventListener("change", () => {
     const tipo = els.docTipo.value;
     els.docPrefijo.value = Numbering.currentPrefix(tipo);
-    els.docNumero.value = Numbering.next(tipo); // reservar número al cambiar tipo
+    els.docNumero.value = Numbering.next(tipo); // reservar número
     currentDoc.type = tipo;
     currentDoc.prefix = els.docPrefijo.value;
     currentDoc.number = Number(els.docNumero.value);
@@ -689,7 +703,8 @@ const UI = (() => {
 
   function fillQuickAdd() {
     const items = Store.getItems();
-    els.catalogQuickAdd.innerHTML = `<option value="">— del catálogo —</option>` +
+    els.catalogQuickAdd.innerHTML =
+      `<option value="">— del catálogo —</option>` +
       items.map(i => `<option value="${i.id}">${escapeHTML(i.name)} (${Utils.fmtMoney(i.price)})</option>`).join("");
   }
   els.btnQuickAdd.addEventListener("click", () => {
@@ -718,13 +733,12 @@ const UI = (() => {
     currentDoc.status = "final";
     Store.saveDoc(currentDoc);
     renderHistorial();
-    // Plantilla de impresión
     const html = Printer.docHTML(currentDoc);
     Printer.openPrint(html);
   });
 
   els.btnDuplicar.addEventListener("click", () => {
-    const tipo = currentDoc.type === "COT" ? "FAC" : currentDoc.type; // duplicar como FAC si venimos de COT
+    const tipo = currentDoc.type === "COT" ? "FAC" : currentDoc.type;
     const dup = Docs.duplicateAs(currentDoc, tipo);
     loadNewDoc(dup);
     alert(`Documento duplicado como ${tipo}.`);
@@ -751,19 +765,24 @@ const UI = (() => {
 
   // ---- Historial
   function renderHistorial() {
-    const q = els.histSearch.value?.toLowerCase()?.trim() || "";
+    const q = els.histSearch?.value?.toLowerCase()?.trim() || "";
     const s = Store.get("settings");
     const docs = Store.getDocs().filter(d => {
       if (!q) return true;
-      return (d.client||"").toLowerCase().includes(q) || `${d.prefix||""}${d.number}`.toLowerCase().includes(q);
+      return (d.client||"").toLowerCase().includes(q) ||
+             `${d.prefix||""}${d.number}`.toLowerCase().includes(q) ||
+             (d.paymentMethod||"").toLowerCase().includes(q);
     });
+    if (!els.histBody) return;
     els.histBody.innerHTML = docs.map(d => {
       const t = Docs.calc(d);
+      const pago = d.paymentMethod ? `${escapeHTML(d.paymentMethod)}` : "-";
       return `<tr>
         <td>${d.type}</td>
         <td>${d.prefix||""}${d.number}</td>
         <td>${Utils.formatDate(d.date, s.locale)}</td>
         <td>${escapeHTML(d.client||"")}</td>
+        <td>${pago}</td>
         <td class="right">${Utils.fmtMoney(t.total, s.currency, s.locale)}</td>
         <td>${d.status}</td>
         <td class="no-print">
@@ -778,15 +797,14 @@ const UI = (() => {
     els.histBody.querySelectorAll(".btn-open").forEach(b => b.onclick = () => {
       const d = Store.getDocs().find(x => x.id === b.dataset.id);
       loadNewDoc(structuredClone(d));
-      // saltar a tab Nuevo
-      activateTab("tab-nuevo");
+      location.hash = "#nuevo";
     });
     els.histBody.querySelectorAll(".btn-dupe").forEach(b => b.onclick = () => {
       const d = Store.getDocs().find(x => x.id === b.dataset.id);
       const tipo = d.type === "COT" ? "FAC" : d.type;
       const dup = Docs.duplicateAs(d, tipo);
       loadNewDoc(dup);
-      activateTab("tab-nuevo");
+      location.hash = "#nuevo";
     });
     els.histBody.querySelectorAll(".btn-ann").forEach(b => b.onclick = () => {
       const d = Store.getDocs().find(x => x.id === b.dataset.id);
@@ -798,13 +816,13 @@ const UI = (() => {
       const html = Printer.docHTML(d);
       Printer.openPrint(html);
     });
+    els.histSearch?.addEventListener("input", renderHistorial);
   }
-  els.histSearch.addEventListener("input", renderHistorial);
 
   // ---- Catálogo
   function renderItems() {
-    const s = Store.get("settings");
     const items = Store.getItems();
+    if (!els.itemsBody) return;
     els.itemsBody.innerHTML = items.map(it => `
       <tr>
         <td><input data-id="${it.id}" class="i-name" value="${escapeAttr(it.name)}"></td>
@@ -839,22 +857,17 @@ const UI = (() => {
       });
     });
   }
-  els.itemForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const it = {
-      id: Utils.uuid(),
-      name: els.itemNombre.value.trim(),
-      desc: els.itemDesc.value.trim(),
-      price: Utils.toNumber(els.itemPrecio.value)
-    };
-    if (!it.name) { alert("Nombre requerido."); return; }
-    const items = Store.getItems(); items.unshift(it); Store.setItems(items);
-    e.target.reset(); renderItems(); fillQuickAdd();
-  });
+  function fillQuickAdd() {
+    const items = Store.getItems();
+    els.catalogQuickAdd.innerHTML =
+      `<option value="">— del catálogo —</option>` +
+      items.map(i => `<option value="${i.id}">${escapeHTML(i.name)} (${Utils.fmtMoney(i.price)})</option>`).join("");
+  }
 
   // ---- Reportes
   function renderReportTable(list) {
     const s = Store.get("settings");
+    if (!els.repBody) return;
     els.repBody.innerHTML = list.map(d => {
       const t = Docs.calc(d).total;
       return `<tr>
@@ -867,12 +880,12 @@ const UI = (() => {
       </tr>`;
     }).join("");
     const sum = Reports.summarize(list);
-    els.cntFAC.textContent = sum.counts.FAC||0;
-    els.cntCOT.textContent = sum.counts.COT||0;
-    els.cntALL.textContent = sum.counts.ALL||0;
-    els.totFAC.textContent = Utils.fmtMoney(sum.totals.FAC||0, s.currency, s.locale);
-    els.totCOT.textContent = Utils.fmtMoney(sum.totals.COT||0, s.currency, s.locale);
-    els.totALL.textContent = Utils.fmtMoney(sum.totals.ALL||0, s.currency, s.locale);
+    document.getElementById("cntFAC").textContent = sum.counts.FAC||0;
+    document.getElementById("cntCOT").textContent = sum.counts.COT||0;
+    document.getElementById("cntALL").textContent = sum.counts.ALL||0;
+    document.getElementById("totFAC").textContent = Utils.fmtMoney(sum.totals.FAC||0, s.currency, s.locale);
+    document.getElementById("totCOT").textContent = Utils.fmtMoney(sum.totals.COT||0, s.currency, s.locale);
+    document.getElementById("totALL").textContent = Utils.fmtMoney(sum.totals.ALL||0, s.currency, s.locale);
   }
 
   function runReportRange() {
@@ -890,7 +903,6 @@ const UI = (() => {
     return { list, label: labelFromMonth(m) };
   }
   function runReportCurrent() {
-    // por defecto: mes actual
     const now = new Date();
     const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
     els.repMes.value = ym;
@@ -997,12 +1009,6 @@ const UI = (() => {
     location.reload();
   });
 
-  // Helpers
-  function activateTab(id) {
-    els.tabs.forEach(b => b.classList.toggle("active", b.dataset.tab === id));
-    els.sections.forEach(s => s.classList.toggle("active", s.id === id));
-  }
-
   // Init
   function init() {
     Store.ensureSeeds();
@@ -1020,3 +1026,4 @@ function escapeAttr(s){ return escapeHTML(s).replace(/"/g,'&quot;'); }
 window.addEventListener("DOMContentLoaded", () => {
   UI.init();
 });
+
