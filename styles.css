@@ -4,10 +4,8 @@
   --panel: #171a21;
   --text: #e6e6e6;
   --muted: #9aa0a6;
-  --accent: #5b6cff; /* violeta/azul para resaltar menú */
-  --accent-2: #24d07a;
+  --accent: #5b6cff;
   --warn: #ffb300;
-  --danger: #e65a5a;
   --border: #262a33;
 
   /* Drawer (claro) */
@@ -37,14 +35,6 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); font-
   background:#1f2430; border:1px solid var(--border); color:var(--text);
   width:40px; height:40px; border-radius:10px; font-size:18px; display:grid; place-items:center;
 }
-
-/* Tabs rápidas (opcional) */
-.tabs { display:flex; gap:6px; overflow:auto; }
-.tab-btn-link {
-  background: transparent; color: var(--text); border:1px solid var(--border);
-  padding:8px 10px; border-radius:10px; font-weight:600; min-width:90px;
-}
-.tab-btn-link:hover { background:#1b202b; }
 
 .btn.primary { background: var(--accent); color:#fff; border:none; }
 .btn { padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:#1f2430; color:var(--text); font-weight:600; }
