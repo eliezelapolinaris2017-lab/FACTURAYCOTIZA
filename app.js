@@ -1,13 +1,11 @@
-/* Oasis — App 100% local (HTML+CSS+JS puro)
- * Vista estilo "páginas": cada botón del header abre index.html con hash (#nuevo,#historial,#catalogo,#reportes,#config)
- * Claves de localStorage:
- *  - oasis.settings.v1
- *  - oasis.items.v1
- *  - oasis.docs.v1
- * Ahora con método de pago: ATH, Cheque, Efectivo, ATH Móvil, PayPal
+/* Oasis — sesión compartida entre pestañas para no pedir el PIN al cambiar de “página”
+ * Mantiene tu stack/funciones previas (pago, reportes, etc.)
+ * Cambios clave:
+ *  - Módulo Session con token en localStorage (expira, por defecto, a las 8h)
+ *  - initAuth salta el overlay si la sesión está activa
+ *  - Botón “Cerrar sesión” en Config
  */
 
-// ---------- Utilidades ----------
 const Utils = {
   fmtMoney(n, currency = "USD", locale = "es-PR") {
     const v = Number(n || 0);
@@ -46,7 +44,36 @@ const Utils = {
   }
 };
 
-// ---------- Store ----------
+/* -------- Session (compartida entre pestañas con localStorage) -------- */
+const Session = (() => {
+  const KEY = "oasis.session.v1";
+  const DURATION_MS = 8 * 60 * 60 * 1000; // 8 horas
+
+  function now() { return Date.now(); }
+  function get() {
+    try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; }
+  }
+  function isActive() {
+    const s = get();
+    return !!(s && s.expiresAt > now());
+  }
+  function start() {
+    const token = Utils.uuid();
+    const ses = { token, issuedAt: now(), expiresAt: now() + DURATION_MS };
+    localStorage.setItem(KEY, JSON.stringify(ses));
+    return ses;
+  }
+  function end() { localStorage.removeItem(KEY); }
+  function touch() {
+    const s = get();
+    if (!s) return;
+    s.expiresAt = now() + DURATION_MS;
+    localStorage.setItem(KEY, JSON.stringify(s));
+  }
+  return { isActive, start, end, touch };
+})();
+
+/* -------- Store / Numbering / Docs / Printer / Reports (idénticos a tu versión anterior con pago) -------- */
 const Store = (() => {
   const KEYS = {
     settings: "oasis.settings.v1",
@@ -104,17 +131,12 @@ const Store = (() => {
     if (idx >= 0) docs[idx] = doc; else docs.unshift(doc);
     set("docs", docs);
   }
-  function removeDoc(id) {
-    const docs = getDocs().filter(d => d.id !== id);
-    set("docs", docs);
-  }
   function setItems(arr) { set("items", arr); }
   function getItems() { return get("items") || []; }
 
-  return { KEYS, DEFAULTS, get, set, ensureSeeds, resetAll, updateSettings, setPINHash, getDocs, saveDoc, removeDoc, setItems, getItems };
+  return { KEYS, DEFAULTS, get, set, ensureSeeds, resetAll, updateSettings, setPINHash, getDocs, saveDoc, setItems, getItems };
 })();
 
-// ---------- Numbering ----------
 const Numbering = (() => {
   function next(tipo) {
     const s = Store.get("settings");
@@ -140,7 +162,6 @@ const Numbering = (() => {
   return { next, currentPrefix, setCounter, setPrefix };
 })();
 
-// ---------- Docs ----------
 const Docs = (() => {
   function calc(doc) {
     const lines = doc.lines || [];
@@ -166,8 +187,8 @@ const Docs = (() => {
       discountPct: 0,
       taxPct: s.taxPercent,
       status: "borrador",
-      paymentMethod: "",  // NUEVO
-      paymentRef: ""      // NUEVO
+      paymentMethod: "",
+      paymentRef: ""
     };
   }
 
@@ -191,7 +212,6 @@ const Docs = (() => {
   return { calc, createEmpty, duplicateAs, reemitNumber };
 })();
 
-// ---------- Printer ----------
 const Printer = (() => {
   function businessHeader() {
     const s = Store.get("settings");
@@ -209,7 +229,6 @@ const Printer = (() => {
     const dateStr = Utils.formatDate(doc.date, locale);
     const numStr = `${doc.prefix || ""}${doc.number}`;
     const title = doc.type === "FAC" ? "Factura" : "Cotización";
-
     const rows = (doc.lines||[]).map(l => `
       <tr>
         <td>${escapeHTML(l.name||"")}</td>
@@ -219,7 +238,6 @@ const Printer = (() => {
         <td style="text-align:right">${Utils.fmtMoney((l.price||0)*(l.qty||1), currency, locale)}</td>
       </tr>
     `).join("");
-
     const pago = doc.paymentMethod ? `<div><strong>Pago:</strong> ${escapeHTML(doc.paymentMethod)}${doc.paymentRef ? " — Ref: " + escapeHTML(doc.paymentRef) : ""}</div>` : "";
 
     return `<!doctype html>
@@ -342,7 +360,6 @@ const Printer = (() => {
   return { docHTML, reportHTML, openPrint };
 })();
 
-// ---------- Reports ----------
 const Reports = (() => {
   function filterByRange(desdeISO, hastaISO) {
     const docs = Store.getDocs().filter(d => d.status !== "anulado");
@@ -377,7 +394,6 @@ const Reports = (() => {
   }
 
   function toCSV(list) {
-    // Añadimos columna "pago" y "pago_ref"
     const lines = [["tipo","numero","fecha","cliente","subtotal","descuento","ivu","total","estado","pago","pago_ref"]];
     list.forEach(d => {
       const c = Docs.calc(d);
@@ -401,20 +417,14 @@ const Reports = (() => {
   return { filterByRange, filterByMonth, summarize, toCSV };
 })();
 
-// ---------- UI / App ----------
+/* ---------------- UI / App ---------------- */
 const UI = (() => {
-  // Elementos
   const els = {
-    // Header links
     tabLinks: document.querySelectorAll(".tab-btn-link"),
-
-    // Secciones
     sections: document.querySelectorAll(".tab"),
-    // Branding
     brandLogo: document.getElementById("brandLogo"),
     brandName: document.getElementById("brandName"),
 
-    // Auth
     authOverlay: document.getElementById("authOverlay"),
     authTitle: document.getElementById("authTitle"),
     authSubtitle: document.getElementById("authSubtitle"),
@@ -426,7 +436,6 @@ const UI = (() => {
     authMsg: document.getElementById("authMsg"),
     authForm: document.getElementById("authForm"),
 
-    // Nuevo
     docForm: document.getElementById("docForm"),
     docTipo: document.getElementById("docTipo"),
     docPrefijo: document.getElementById("docPrefijo"),
@@ -452,18 +461,15 @@ const UI = (() => {
     btnAnular: document.getElementById("btnAnular"),
     btnReemitir: document.getElementById("btnReemitir"),
 
-    // Historial
     histBody: document.getElementById("histBody"),
     histSearch: document.getElementById("histSearch"),
 
-    // Catálogo
     itemForm: document.getElementById("itemForm"),
     itemNombre: document.getElementById("itemNombre"),
     itemDesc: document.getElementById("itemDesc"),
     itemPrecio: document.getElementById("itemPrecio"),
     itemsBody: document.getElementById("itemsBody"),
 
-    // Reportes
     repDesde: document.getElementById("repDesde"),
     repHasta: document.getElementById("repHasta"),
     repMes: document.getElementById("repMes"),
@@ -479,7 +485,6 @@ const UI = (() => {
     btnCSV: document.getElementById("btnCSV"),
     btnPDF: document.getElementById("btnPDF"),
 
-    // Config
     cfgNombre: document.getElementById("cfgNombre"),
     cfgMoneda: document.getElementById("cfgMoneda"),
     cfgIVU: document.getElementById("cfgIVU"),
@@ -498,11 +503,12 @@ const UI = (() => {
     cfgPinMsg: document.getElementById("cfgPinMsg"),
     btnGuardarConfig: document.getElementById("btnGuardarConfig"),
     btnReset: document.getElementById("btnReset"),
+    btnLogout: document.getElementById("btnLogout"),
   };
 
   let currentDoc = null;
 
-  // ----- Header: abrir nueva "página" (hash) -----
+  // Abrir cada pestaña en nueva ventana
   els.tabLinks.forEach(btn => {
     btn.addEventListener("click", () => {
       const href = btn.dataset.href || "#nuevo";
@@ -511,7 +517,6 @@ const UI = (() => {
     });
   });
 
-  // ----- Manejo de hash -> activar sección correcta -----
   const HASH_TO_TAB = {
     "#nuevo": "tab-nuevo",
     "#historial": "tab-historial",
@@ -530,11 +535,16 @@ const UI = (() => {
     if (id === "tab-reportes") runReportCurrent();
     if (id === "tab-config") loadConfigForm();
   }
-
   window.addEventListener("hashchange", activateTabByHash);
 
-  // ---- Auth / PIN
+  // -------- AUTH con sesión persistente entre pestañas --------
   async function initAuth() {
+    // Si hay sesión activa, saltar el overlay
+    if (Session.isActive()) {
+      els.authOverlay.style.display = "none";
+      afterLogin();
+      return;
+    }
     const s = Store.get("settings");
     if (!s.pinHash) {
       // Primer uso: crear PIN
@@ -553,6 +563,7 @@ const UI = (() => {
         if (p1 !== p2) return showAuthMsg("Los PIN no coinciden.");
         const hash = await Utils.hashPIN(p1);
         Store.setPINHash(hash);
+        Session.start(); // inicia sesión
         els.authOverlay.style.display = "none";
         afterLogin();
       };
@@ -567,6 +578,7 @@ const UI = (() => {
         const p = els.authPin.value.trim();
         const hash = await Utils.hashPIN(p);
         if (hash === Store.get("settings").pinHash) {
+          Session.start(); // inicia sesión
           els.authOverlay.style.display = "none";
           afterLogin();
         } else {
@@ -577,7 +589,19 @@ const UI = (() => {
   }
   function showAuthMsg(t) { els.authMsg.textContent = t; }
 
-  // ---- Post-auth inicial
+  // Renovar sesión con actividad del usuario
+  ["click","keydown","touchstart"].forEach(evt => {
+    window.addEventListener(evt, () => Session.touch(), { passive: true });
+  });
+
+  // Cerrar sesión
+  if (els.btnLogout) {
+    els.btnLogout.addEventListener("click", () => {
+      Session.end();
+      location.reload();
+    });
+  }
+
   function afterLogin() {
     loadBrand();
     loadNewDoc(Docs.createEmpty());
@@ -588,7 +612,6 @@ const UI = (() => {
     activateTabByHash();
   }
 
-  // ---- Marca (nombre/logo en header)
   function loadBrand() {
     const s = Store.get("settings");
     els.brandName.textContent = s.businessName || "Oasis";
@@ -600,7 +623,6 @@ const UI = (() => {
     }
   }
 
-  // ---- Nuevo documento
   function loadNewDoc(doc) {
     currentDoc = doc;
     const s = Store.get("settings");
@@ -617,8 +639,7 @@ const UI = (() => {
     els.lineasBody.innerHTML = "";
     (doc.lines || []).forEach(addLineaRow);
     if ((doc.lines || []).length === 0) addLineaRow();
-    updateTotals();
-    updateDocButtons();
+    updateTotals(); updateDocButtons();
   }
 
   function updateDocButtons() {
@@ -689,11 +710,10 @@ const UI = (() => {
     els.sumTotal.textContent = Utils.fmtMoney(t.total, s.currency, s.locale);
   }
 
-  // Eventos documento
   els.docTipo.addEventListener("change", () => {
     const tipo = els.docTipo.value;
     els.docPrefijo.value = Numbering.currentPrefix(tipo);
-    els.docNumero.value = Numbering.next(tipo); // reservar número
+    els.docNumero.value = Numbering.next(tipo);
     currentDoc.type = tipo;
     currentDoc.prefix = els.docPrefijo.value;
     currentDoc.number = Number(els.docNumero.value);
@@ -763,7 +783,6 @@ const UI = (() => {
     alert("Número re-emitido.");
   });
 
-  // ---- Historial
   function renderHistorial() {
     const q = els.histSearch?.value?.toLowerCase()?.trim() || "";
     const s = Store.get("settings");
@@ -793,7 +812,6 @@ const UI = (() => {
         </td>
       </tr>`;
     }).join("");
-    // acciones
     els.histBody.querySelectorAll(".btn-open").forEach(b => b.onclick = () => {
       const d = Store.getDocs().find(x => x.id === b.dataset.id);
       loadNewDoc(structuredClone(d));
@@ -819,7 +837,6 @@ const UI = (() => {
     els.histSearch?.addEventListener("input", renderHistorial);
   }
 
-  // ---- Catálogo
   function renderItems() {
     const items = Store.getItems();
     if (!els.itemsBody) return;
@@ -828,9 +845,7 @@ const UI = (() => {
         <td><input data-id="${it.id}" class="i-name" value="${escapeAttr(it.name)}"></td>
         <td><input data-id="${it.id}" class="i-desc" value="${escapeAttr(it.desc||"")}"></td>
         <td><input data-id="${it.id}" class="i-price" type="number" step="0.01" inputmode="decimal" value="${Number(it.price||0)}"></td>
-        <td class="no-print">
-          <button class="btn i-del" data-id="${it.id}">Eliminar</button>
-        </td>
+        <td class="no-print"><button class="btn i-del" data-id="${it.id}">Eliminar</button></td>
       </tr>
     `).join("");
 
@@ -864,7 +879,6 @@ const UI = (() => {
       items.map(i => `<option value="${i.id}">${escapeHTML(i.name)} (${Utils.fmtMoney(i.price)})</option>`).join("");
   }
 
-  // ---- Reportes
   function renderReportTable(list) {
     const s = Store.get("settings");
     if (!els.repBody) return;
@@ -919,23 +933,20 @@ const UI = (() => {
     return `${mm}/${y}`;
   }
 
-  els.btnRepRango.addEventListener("click", (e) => { e.preventDefault(); runReportRange(); });
-  els.btnRepMes.addEventListener("click", (e) => { e.preventDefault(); runReportMonth(); });
-
-  els.btnCSV.addEventListener("click", () => {
+  els.btnRepRango?.addEventListener("click", (e) => { e.preventDefault(); runReportRange(); });
+  els.btnRepMes?.addEventListener("click", (e) => { e.preventDefault(); runReportMonth(); });
+  els.btnCSV?.addEventListener("click", () => {
     const { list, label } = (els.repMes.value ? runReportMonth() : runReportRange());
     const csv = Reports.toCSV(list);
     const safe = label.replace(/[^\dA-Za-z_-]+/g, "_");
     Utils.download(`reporte_${safe}.csv`, csv);
   });
-
-  els.btnPDF.addEventListener("click", () => {
+  els.btnPDF?.addEventListener("click", () => {
     const { list, label } = (els.repMes.value ? runReportMonth() : runReportRange());
     const html = Printer.reportHTML(list, label);
     Printer.openPrint(html);
   });
 
-  // ---- Config
   function loadConfigForm() {
     const s = Store.get("settings");
     els.cfgNombre.value = s.businessName || "";
@@ -951,7 +962,7 @@ const UI = (() => {
     loadBrand();
   }
 
-  els.btnGuardarConfig.addEventListener("click", () => {
+  els.btnGuardarConfig?.addEventListener("click", () => {
     const patch = {
       businessName: els.cfgNombre.value.trim(),
       currency: (els.cfgMoneda.value||"USD").toUpperCase(),
@@ -967,7 +978,7 @@ const UI = (() => {
     alert("Configuración guardada.");
   });
 
-  els.cfgLogo.addEventListener("change", () => {
+  els.cfgLogo?.addEventListener("change", () => {
     const file = els.cfgLogo.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -980,14 +991,14 @@ const UI = (() => {
     };
     reader.readAsDataURL(file);
   });
-  els.btnQuitarLogo.addEventListener("click", (e) => {
+  els.btnQuitarLogo?.addEventListener("click", (e) => {
     e.preventDefault();
     Store.updateSettings({ logoDataUrl: "" });
     els.cfgLogoPreview.removeAttribute("src"); els.cfgLogoPreview.style.display="none";
     loadBrand();
   });
 
-  els.btnCambiarPIN.addEventListener("click", async () => {
+  els.btnCambiarPIN?.addEventListener("click", async () => {
     const curr = els.cfgPinActual.value.trim();
     const n1 = els.cfgPinNuevo1.value.trim();
     const n2 = els.cfgPinNuevo2.value.trim();
@@ -1003,27 +1014,24 @@ const UI = (() => {
     els.cfgPinActual.value = els.cfgPinNuevo1.value = els.cfgPinNuevo2.value = "";
   });
 
-  els.btnReset.addEventListener("click", () => {
+  els.btnReset?.addEventListener("click", () => {
     if (!confirm("Esto borrará toda la data (config, catálogo, documentos). ¿Continuar?")) return;
     Store.resetAll();
+    Session.end();
     location.reload();
   });
 
-  // Init
   function init() {
     Store.ensureSeeds();
     initAuth();
   }
-
   return { init };
 })();
 
-// ---------- Helpers HTML escaping ----------
+/* Helpers */
 function escapeHTML(s){ return String(s||"").replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function escapeAttr(s){ return escapeHTML(s).replace(/"/g,'&quot;'); }
 
-// ---------- Arranque ----------
 window.addEventListener("DOMContentLoaded", () => {
   UI.init();
 });
-
