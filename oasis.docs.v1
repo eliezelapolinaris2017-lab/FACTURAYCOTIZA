@@ -1,0 +1,15 @@
+[
+  {
+    "id":"uuid",
+    "type":"COT",
+    "prefix":"COT-",
+    "number":1,
+    "date":"2025-01-01",
+    "client":"Cliente",
+    "notes":"Condiciones...",
+    "lines":[{"name":"Item","desc":"...","price":10,"qty":2}],
+    "discountPct":5,
+    "taxPct":11.5,
+    "status":"borrador|final|anulado"
+  }
+]
