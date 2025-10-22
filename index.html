@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Oasis — Facturas & Cotizaciones (Local)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="dark">
+  <!-- Login / PIN Gate -->
+  <div id="authOverlay" class="overlay">
+    <div class="card">
+      <h1 id="authTitle">Bienvenido</h1>
+      <p id="authSubtitle">Configura un PIN para proteger tu app.</p>
+      <form id="authForm">
+        <label id="authLabelPIN" for="authPin">PIN</label>
+        <input id="authPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="4–8 dígitos" required />
+        <label id="authLabelPIN2" for="authPin2" class="hidden">Repetir PIN</label>
+        <input id="authPin2" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="Confirma PIN" class="hidden" />
+        <button type="submit" class="btn primary" id="authBtn">Crear PIN</button>
+        <p id="authMsg" class="msg"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- App Header -->
+  <header class="topbar no-print">
+    <div class="brand">
+      <img id="brandLogo" alt="Logo" />
+      <div>
+        <strong id="brandName">Oasis</strong>
+        <small id="brandSubtitle">Facturas & Cotizaciones</small>
+      </div>
+    </div>
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="tab-nuevo">Nuevo</button>
+      <button class="tab-btn" data-tab="tab-historial">Historial</button>
+      <button class="tab-btn" data-tab="tab-catalogo">Catálogo</button>
+      <button class="tab-btn" data-tab="tab-reportes">Reportes</button>
+      <button class="tab-btn" data-tab="tab-config">Config</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- TAB: NUEVO -->
+    <section id="tab-nuevo" class="tab active">
+      <form id="docForm" class="panel">
+        <div class="row">
+          <div class="col">
+            <label>Tipo</label>
+            <select id="docTipo">
+              <option value="COT">Cotización</option>
+              <option value="FAC">Factura</option>
+            </select>
+          </div>
+          <div class="col">
+            <label>Número</label>
+            <div class="inline">
+              <input id="docPrefijo" class="w-40" />
+              <input id="docNumero" class="w-60" inputmode="numeric" />
+            </div>
+            <small class="hint">Prefijo editable y consecutivo autoincremental.</small>
+          </div>
+          <div class="col">
+            <label>Fecha</label>
+            <input id="docFecha" type="date" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label>Cliente</label>
+            <input id="docCliente" placeholder="Nombre del cliente" />
+          </div>
+          <div class="col">
+            <label>Notas / Condiciones</label>
+            <input id="docNotas" placeholder="Términos, validez, etc." />
+          </div>
+        </div>
+
+        <div class="lines">
+          <div class="lines-header">
+            <strong>Ítems</strong>
+            <div class="inline">
+              <select id="catalogQuickAdd"></select>
+              <button type="button" id="btnQuickAdd" class="btn">Agregar</button>
+              <button type="button" id="btnAddLinea" class="btn">+ Línea</button>
+            </div>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width:36%">Descripción</th>
+                <th style="width:18%">Detalle</th>
+                <th style="width:16%">Precio</th>
+                <th style="width:14%">Cant.</th>
+                <th style="width:16%">Importe</th>
+                <th class="no-print"></th>
+              </tr>
+            </thead>
+            <tbody id="lineasBody">
+            </tbody>
+          </table>
+        </div>
+
+        <div class="totals">
+          <div class="row">
+            <div class="col">
+              <label>Descuento %</label>
+              <input id="docDescuento" type="number" inputmode="decimal" step="0.01" min="0" max="100" value="0" />
+            </div>
+            <div class="col">
+              <label>Impuesto (IVU) %</label>
+              <input id="docImpuesto" type="number" inputmode="decimal" step="0.01" min="0" max="25" />
+            </div>
+          </div>
+          <div class="sumas">
+            <div>Subtotal: <strong id="sumSubtotal">$0.00</strong></div>
+            <div>Descuento: <strong id="sumDesc">$0.00</strong></div>
+            <div>IVU: <strong id="sumImpuesto">$0.00</strong></div>
+            <div>Total: <strong id="sumTotal">$0.00</strong></div>
+          </div>
+        </div>
+
+        <div class="row no-print">
+          <div class="col">
+            <button type="button" id="btnGuardarBorrador" class="btn">Guardar borrador</button>
+          </div>
+          <div class="col right">
+            <button type="button" id="btnReemitir" class="btn warn">Re-emitir número</button>
+            <button type="button" id="btnAnular" class="btn warn">Anular</button>
+            <button type="button" id="btnDuplicar" class="btn">Duplicar</button>
+            <button type="submit" id="btnGuardarFinal" class="btn primary">Guardar & PDF</button>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <!-- TAB: HISTORIAL -->
+    <section id="tab-historial" class="tab">
+      <div class="panel">
+        <div class="row">
+          <input id="histSearch" placeholder="Buscar por cliente o número…" />
+        </div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Número</th>
+              <th>Fecha</th>
+              <th>Cliente</th>
+              <th>Total</th>
+              <th>Estado</th>
+              <th class="no-print">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB: CATALOGO -->
+    <section id="tab-catalogo" class="tab">
+      <div class="panel">
+        <form id="itemForm" class="row">
+          <input id="itemNombre" placeholder="Nombre" required />
+          <input id="itemDesc" placeholder="Descripción" />
+          <input id="itemPrecio" type="number" step="0.01" inputmode="decimal" placeholder="Precio" required />
+          <button class="btn" type="submit">Agregar</button>
+        </form>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Descripción</th>
+              <th>Precio</th>
+              <th class="no-print">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="itemsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB: REPORTES -->
+    <section id="tab-reportes" class="tab">
+      <div class="panel">
+        <div class="row">
+          <div class="col">
+            <label>Por rango</label>
+            <div class="inline">
+              <input id="repDesde" type="date" />
+              <input id="repHasta" type="date" />
+              <button id="btnRepRango" class="btn">Filtrar</button>
+            </div>
+          </div>
+          <div class="col">
+            <label>Por mes</label>
+            <div class="inline">
+              <input id="repMes" type="month" />
+              <button id="btnRepMes" class="btn">Aplicar</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="repResumen" class="resumen">
+          <div>FAC — Cantidad: <strong id="cntFAC">0</strong> | Total: <strong id="totFAC">$0.00</strong></div>
+          <div>COT — Cantidad: <strong id="cntCOT">0</strong> | Total: <strong id="totCOT">$0.00</strong></div>
+          <div>General — Cantidad: <strong id="cntALL">0</strong> | Total: <strong id="totALL">$0.00</strong></div>
+        </div>
+
+        <div class="row no-print">
+          <button id="btnCSV" class="btn">Exportar CSV</button>
+          <button id="btnPDF" class="btn">Exportar PDF</button>
+        </div>
+
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Número</th>
+              <th>Fecha</th>
+              <th>Cliente</th>
+              <th>Total</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="repBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB: CONFIG -->
+    <section id="tab-config" class="tab">
+      <div class="panel">
+        <div class="row">
+          <div class="col">
+            <label>Nombre del negocio</label>
+            <input id="cfgNombre" />
+          </div>
+          <div class="col">
+            <label>Moneda</label>
+            <input id="cfgMoneda" value="USD" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label>IVU % (Puerto Rico)</label>
+            <input id="cfgIVU" type="number" step="0.01" min="0" max="25" />
+          </div>
+          <div class="col">
+            <label>Formato de fecha (locale)</label>
+            <input id="cfgLocale" value="es-PR" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label>Prefijo FAC</label>
+            <input id="cfgPrefFAC" />
+          </div>
+          <div class="col">
+            <label>Siguiente FAC #</label>
+            <input id="cfgNextFAC" type="number" inputmode="numeric" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label>Prefijo COT</label>
+            <input id="cfgPrefCOT" />
+          </div>
+          <div class="col">
+            <label>Siguiente COT #</label>
+            <input id="cfgNextCOT" type="number" inputmode="numeric" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label>Logo (PNG/JPG)</label>
+            <input id="cfgLogo" type="file" accept="image/png,image/jpeg" />
+            <small class="hint">Se guarda localmente (base64). </small>
+            <div class="logoPreview">
+              <img id="cfgLogoPreview" alt="Logo" />
+              <button id="btnQuitarLogo" class="btn">Quitar logo</button>
+            </div>
+          </div>
+          <div class="col">
+            <label>Cambiar PIN</label>
+            <div class="stack">
+              <input id="cfgPinActual" type="password" inputmode="numeric" placeholder="PIN actual" />
+              <input id="cfgPinNuevo1" type="password" inputmode="numeric" placeholder="PIN nuevo" />
+              <input id="cfgPinNuevo2" type="password" inputmode="numeric" placeholder="Repetir PIN nuevo" />
+              <button id="btnCambiarPIN" class="btn">Actualizar PIN</button>
+              <p id="cfgPinMsg" class="msg"></p>
+            </div>
+          </div>
+        </div>
+        <div class="row no-print">
+          <button id="btnGuardarConfig" class="btn primary">Guardar configuración</button>
+          <button id="btnReset" class="btn warn">Reset (borrar datos)</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Área oculta para plantillas de impresión -->
+  <div id="printArea" class="print-area"></div>
+
+  <footer class="no-print footer">
+    <small>Oasis • 100% local • Sin dependencias • Hecho para iPad/celular</small>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
