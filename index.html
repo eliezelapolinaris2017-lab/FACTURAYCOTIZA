@@ -33,6 +33,7 @@
       </div>
     </div>
     <nav class="tabs">
+      <!-- ahora navegan en la MISMA página -->
       <button class="tab-btn-link" data-href="#nuevo">Nuevo</button>
       <button class="tab-btn-link" data-href="#historial">Historial</button>
       <button class="tab-btn-link" data-href="#catalogo">Catálogo</button>
@@ -42,7 +43,7 @@
   </header>
 
   <main>
-    <!-- NUEVO -->
+    <!-- TAB: NUEVO (Inicio) -->
     <section id="tab-nuevo" class="tab">
       <form id="docForm" class="panel">
         <div class="row">
@@ -153,9 +154,12 @@
       </form>
     </section>
 
-    <!-- HISTORIAL -->
+    <!-- TAB: HISTORIAL -->
     <section id="tab-historial" class="tab">
       <div class="panel">
+        <div class="row no-print">
+          <button class="btn btnBackHome">← Volver al inicio</button>
+        </div>
         <div class="row">
           <input id="histSearch" placeholder="Buscar por cliente, número o pago…" />
         </div>
@@ -177,9 +181,12 @@
       </div>
     </section>
 
-    <!-- CATALOGO -->
+    <!-- TAB: CATALOGO -->
     <section id="tab-catalogo" class="tab">
       <div class="panel">
+        <div class="row no-print">
+          <button class="btn btnBackHome">← Volver al inicio</button>
+        </div>
         <form id="itemForm" class="row">
           <input id="itemNombre" placeholder="Nombre" required />
           <input id="itemDesc" placeholder="Descripción" />
@@ -200,9 +207,12 @@
       </div>
     </section>
 
-    <!-- REPORTES -->
+    <!-- TAB: REPORTES -->
     <section id="tab-reportes" class="tab">
       <div class="panel">
+        <div class="row no-print">
+          <button class="btn btnBackHome">← Volver al inicio</button>
+        </div>
         <div class="row">
           <div class="col">
             <label>Por rango</label>
@@ -248,9 +258,12 @@
       </div>
     </section>
 
-    <!-- CONFIG -->
+    <!-- TAB: CONFIG -->
     <section id="tab-config" class="tab">
       <div class="panel">
+        <div class="row no-print">
+          <button class="btn btnBackHome">← Volver al inicio</button>
+        </div>
         <div class="row">
           <div class="col">
             <label>Nombre del negocio</label>
@@ -296,7 +309,7 @@
           <div class="col">
             <label>Logo (PNG/JPG)</label>
             <input id="cfgLogo" type="file" accept="image/png,image/jpeg" />
-            <small class="hint">Se guarda localmente (base64).</small>
+            <small class="hint">Se guarda localmente (base64). </small>
             <div class="logoPreview">
               <img id="cfgLogoPreview" alt="Logo" />
               <button id="btnQuitarLogo" class="btn">Quitar logo</button>
@@ -313,7 +326,6 @@
             </div>
           </div>
         </div>
-
         <div class="row no-print">
           <button id="btnGuardarConfig" class="btn primary">Guardar configuración</button>
           <button id="btnLogout" class="btn">Cerrar sesión</button>
@@ -323,6 +335,7 @@
     </section>
   </main>
 
+  <!-- Área oculta para plantillas de impresión -->
   <div id="printArea" class="print-area"></div>
 
   <footer class="no-print footer">
