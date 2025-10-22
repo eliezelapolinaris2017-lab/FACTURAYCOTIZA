@@ -33,7 +33,6 @@
       </div>
     </div>
     <nav class="tabs">
-      <!-- Cada botón abre una "página" nueva (misma index con hash) -->
       <button class="tab-btn-link" data-href="#nuevo">Nuevo</button>
       <button class="tab-btn-link" data-href="#historial">Historial</button>
       <button class="tab-btn-link" data-href="#catalogo">Catálogo</button>
@@ -43,7 +42,7 @@
   </header>
 
   <main>
-    <!-- TAB: NUEVO -->
+    <!-- NUEVO -->
     <section id="tab-nuevo" class="tab">
       <form id="docForm" class="panel">
         <div class="row">
@@ -154,11 +153,11 @@
       </form>
     </section>
 
-    <!-- TAB: HISTORIAL -->
+    <!-- HISTORIAL -->
     <section id="tab-historial" class="tab">
       <div class="panel">
         <div class="row">
-          <input id="histSearch" placeholder="Buscar por cliente o número…" />
+          <input id="histSearch" placeholder="Buscar por cliente, número o pago…" />
         </div>
         <table class="table">
           <thead>
@@ -178,7 +177,7 @@
       </div>
     </section>
 
-    <!-- TAB: CATALOGO -->
+    <!-- CATALOGO -->
     <section id="tab-catalogo" class="tab">
       <div class="panel">
         <form id="itemForm" class="row">
@@ -201,7 +200,7 @@
       </div>
     </section>
 
-    <!-- TAB: REPORTES -->
+    <!-- REPORTES -->
     <section id="tab-reportes" class="tab">
       <div class="panel">
         <div class="row">
@@ -249,7 +248,7 @@
       </div>
     </section>
 
-    <!-- TAB: CONFIG -->
+    <!-- CONFIG -->
     <section id="tab-config" class="tab">
       <div class="panel">
         <div class="row">
@@ -297,7 +296,7 @@
           <div class="col">
             <label>Logo (PNG/JPG)</label>
             <input id="cfgLogo" type="file" accept="image/png,image/jpeg" />
-            <small class="hint">Se guarda localmente (base64). </small>
+            <small class="hint">Se guarda localmente (base64).</small>
             <div class="logoPreview">
               <img id="cfgLogoPreview" alt="Logo" />
               <button id="btnQuitarLogo" class="btn">Quitar logo</button>
@@ -314,15 +313,16 @@
             </div>
           </div>
         </div>
+
         <div class="row no-print">
           <button id="btnGuardarConfig" class="btn primary">Guardar configuración</button>
+          <button id="btnLogout" class="btn">Cerrar sesión</button>
           <button id="btnReset" class="btn warn">Reset (borrar datos)</button>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- Área oculta para plantillas de impresión -->
   <div id="printArea" class="print-area"></div>
 
   <footer class="no-print footer">
