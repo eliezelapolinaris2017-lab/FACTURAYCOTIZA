@@ -7,16 +7,16 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="dark">
-  <!-- Login / PIN Gate -->
+  <!-- Login / PIN -->
   <div id="authOverlay" class="overlay">
     <div class="card">
       <h1 id="authTitle">Bienvenido</h1>
       <p id="authSubtitle">Configura un PIN para proteger tu app.</p>
-      <form id="authForm">
+      <form id="authForm" autocomplete="off">
         <label id="authLabelPIN" for="authPin">PIN</label>
-        <input id="authPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="4–8 dígitos" required />
+        <input id="authPin" type="password" inputmode="numeric" maxlength="8" placeholder="4–8 dígitos" required />
         <label id="authLabelPIN2" for="authPin2" class="hidden">Repetir PIN</label>
-        <input id="authPin2" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="Confirma PIN" class="hidden" />
+        <input id="authPin2" type="password" inputmode="numeric" maxlength="8" placeholder="Confirma PIN" class="hidden" />
         <button type="submit" class="btn primary" id="authBtn">Crear PIN</button>
         <p id="authMsg" class="msg"></p>
       </form>
@@ -29,44 +29,33 @@
     <div class="drawer-header">
       <div class="drawer-brand">
         <img id="drawerLogo" alt="Logo" />
-        <div class="drawer-title">
-          <strong id="drawerName">Oasis</strong>
-        </div>
+        <div class="drawer-title"><strong id="drawerName">Oasis</strong></div>
       </div>
       <button id="btnDrawerClose" class="icon-btn" aria-label="Cerrar menú">×</button>
     </div>
-
     <nav class="drawer-nav" role="navigation">
       <button class="drawer-item" data-href="#nuevo">
-        <span class="ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-5v-6H11v6H6v-9H3z"/></svg>
-        </span><span>Inicio</span>
+        <span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-5v-6H11v6H6v-9H3z"/></svg></span>
+        <span>Inicio</span>
       </button>
       <button class="drawer-item" data-href="#historial">
-        <span class="ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 1 1-6.36 2.64L4 8H1V1h7L5.64 3.36A11 11 0 1 0 13 3zm-1 4h2v6h-5V11h3z"/></svg>
-        </span><span>Historial</span>
+        <span class="ico"><svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 1 1-6.36 2.64L4 8H1V1h7L5.64 3.36A11 11 0 1 0 13 3zm-1 4h2v6h-5V11h3z"/></svg></span>
+        <span>Historial</span>
       </button>
       <button class="drawer-item" data-href="#catalogo">
-        <span class="ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z"/></svg>
-        </span><span>Catálogo</span>
+        <span class="ico"><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z"/></svg></span>
+        <span>Catálogo</span>
       </button>
       <button class="drawer-item" data-href="#reportes">
-        <span class="ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M3 21V3h2v16h16v2H3zm4-4h3V9H7v8zm5 0h3V5h-3v12zm5 0h3v-7h-3v7z"/></svg>
-        </span><span>Reportes</span>
+        <span class="ico"><svg viewBox="0 0 24 24"><path d="M3 21V3h2v16h16v2H3zm4-4h3V9H7v8zm5 0h3V5h-3v12zm5 0h3v-7h-3v7z"/></svg></span>
+        <span>Reportes</span>
       </button>
       <button class="drawer-item" data-href="#config">
-        <span class="ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm8.94 3a7.97 7.97 0 0 1 0 2l2.06 1.6-2 3.46-2.44-1a8.14 8.14 0 0 1-1.74 1l-.37 2.6H7.55l-.37-2.6a8.14 8.14 0 0 1-1.74-1l-2.44 1-2-3.46L3.06 13a7.97 7.97 0 0 1 0-2L1 9.4 3 5.94l2.44 1a8.14 8.14 0 0 1 1.74-1L7.55 3h8.9l.37 2.6a8.14 8.14 0 0 1 1.74 1l2.44-1 2 3.46L20.94 11z"/></svg>
-        </span><span>Configuración</span>
+        <span class="ico"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm8.94 3a7.97 7.97 0 0 1 0 2l2.06 1.6-2 3.46-2.44-1a8.14 8.14 0 0 1-1.74 1l-.37 2.6H7.55l-.37-2.6a8.14 8.14 0 0 1-1.74-1l-2.44 1-2-3.46L3.06 13a7.97 7.97 0 0 1 0-2L1 9.4 3 5.94l2.44 1a8.14 8.14 0 0 1 1.74-1L7.55 3h8.9l.37 2.6a8.14 8.14 0 0 1 1.74 1l2.44-1 2 3.46L20.94 11z"/></svg></span>
+        <span>Configuración</span>
       </button>
     </nav>
-
-    <div class="drawer-footer">
-      <small class="muted">100% local • Sin dependencias</small>
-    </div>
+    <div class="drawer-footer"><small class="muted">100% local • Sin dependencias</small></div>
   </aside>
 
   <!-- Topbar (sin botones de navegación) -->
@@ -82,7 +71,7 @@
   </header>
 
   <main>
-    <!-- TAB: NUEVO (Inicio) -->
+    <!-- NUEVO (Inicio) -->
     <section id="tab-nuevo" class="tab">
       <form id="docForm" class="panel">
         <div class="row">
@@ -106,33 +95,25 @@
             <input id="docFecha" type="date" />
           </div>
         </div>
-
         <div class="row">
-          <div class="col">
-            <label>Cliente</label>
-            <input id="docCliente" placeholder="Nombre del cliente" />
-          </div>
-          <div class="col">
-            <label>Notas / Condiciones</label>
-            <input id="docNotas" placeholder="Términos, validez, etc." />
-          </div>
+          <div class="col"><label>Cliente</label><input id="docCliente" placeholder="Nombre del cliente" /></div>
+          <div class="col"><label>Notas / Condiciones</label><input id="docNotas" placeholder="Términos, validez, etc." /></div>
         </div>
-
         <div class="row">
           <div class="col">
             <label>Método de pago</label>
             <select id="docPago">
               <option value="">— Seleccionar —</option>
-              <option value="ATH">ATH</option>
-              <option value="Cheque">Cheque</option>
-              <option value="Efectivo">Efectivo</option>
-              <option value="ATH Móvil">ATH Móvil</option>
-              <option value="PayPal">PayPal</option>
+              <option>ATH</option>
+              <option>Cheque</option>
+              <option>Efectivo</option>
+              <option>ATH Móvil</option>
+              <option>PayPal</option>
             </select>
           </div>
           <div class="col">
             <label>Referencia de pago (opcional)</label>
-            <input id="docPagoRef" placeholder="Ej: autorización, recibo, nota" />
+            <input id="docPagoRef" placeholder="Autorización / Recibo / Nota" />
           </div>
         </div>
 
@@ -162,14 +143,8 @@
 
         <div class="totals">
           <div class="row">
-            <div class="col">
-              <label>Descuento %</label>
-              <input id="docDescuento" type="number" inputmode="decimal" step="0.01" min="0" max="100" value="0" />
-            </div>
-            <div class="col">
-              <label>Impuesto (IVU) %</label>
-              <input id="docImpuesto" type="number" inputmode="decimal" step="0.01" min="0" max="25" />
-            </div>
+            <div class="col"><label>Descuento %</label><input id="docDescuento" type="number" inputmode="decimal" step="0.01" min="0" max="100" value="0" /></div>
+            <div class="col"><label>Impuesto (IVU) %</label><input id="docImpuesto" type="number" inputmode="decimal" step="0.01" min="0" max="25" /></div>
           </div>
           <div class="sumas">
             <div>Subtotal: <strong id="sumSubtotal">$0.00</strong></div>
@@ -180,9 +155,7 @@
         </div>
 
         <div class="row no-print">
-          <div class="col">
-            <button type="button" id="btnGuardarBorrador" class="btn">Guardar borrador</button>
-          </div>
+          <div class="col"><button type="button" id="btnGuardarBorrador" class="btn">Guardar borrador</button></div>
           <div class="col right">
             <button type="button" id="btnReemitir" class="btn warn">Re-emitir número</button>
             <button type="button" id="btnAnular" class="btn warn">Anular</button>
@@ -193,22 +166,17 @@
       </form>
     </section>
 
-    <!-- TAB: HISTORIAL -->
+    <!-- HISTORIAL -->
     <section id="tab-historial" class="tab">
       <div class="panel">
         <div class="row">
+          <button class="btn" data-goto="#nuevo">← Volver al inicio</button>
           <input id="histSearch" placeholder="Buscar por cliente, número o pago…" />
         </div>
         <table class="table">
           <thead>
             <tr>
-              <th>Tipo</th>
-              <th>Número</th>
-              <th>Fecha</th>
-              <th>Cliente</th>
-              <th>Pago</th>
-              <th>Total</th>
-              <th>Estado</th>
+              <th>Tipo</th><th>Número</th><th>Fecha</th><th>Cliente</th><th>Pago</th><th>Total</th><th>Estado</th>
               <th class="no-print">Acciones</th>
             </tr>
           </thead>
@@ -217,9 +185,10 @@
       </div>
     </section>
 
-    <!-- TAB: CATALOGO -->
+    <!-- CATALOGO -->
     <section id="tab-catalogo" class="tab">
       <div class="panel">
+        <div class="row"><button class="btn" data-goto="#nuevo">← Volver al inicio</button></div>
         <form id="itemForm" class="row">
           <input id="itemNombre" placeholder="Nombre" required />
           <input id="itemDesc" placeholder="Descripción" />
@@ -227,22 +196,16 @@
           <button class="btn" type="submit">Agregar</button>
         </form>
         <table class="table">
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Descripción</th>
-              <th>Precio</th>
-              <th class="no-print">Acciones</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Nombre</th><th>Descripción</th><th>Precio</th><th class="no-print">Acciones</th></tr></thead>
           <tbody id="itemsBody"></tbody>
         </table>
       </div>
     </section>
 
-    <!-- TAB: REPORTES -->
+    <!-- REPORTES -->
     <section id="tab-reportes" class="tab">
       <div class="panel">
+        <div class="row"><button class="btn" data-goto="#nuevo">← Volver al inicio</button></div>
         <div class="row">
           <div class="col">
             <label>Por rango</label>
@@ -275,12 +238,7 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Tipo</th>
-              <th>Número</th>
-              <th>Fecha</th>
-              <th>Cliente</th>
-              <th>Total</th>
-              <th>Estado</th>
+              <th>Tipo</th><th>Número</th><th>Fecha</th><th>Cliente</th><th>Pago</th><th>Total</th><th>Estado</th>
             </tr>
           </thead>
           <tbody id="repBody"></tbody>
@@ -288,55 +246,31 @@
       </div>
     </section>
 
-    <!-- TAB: CONFIG -->
+    <!-- CONFIG -->
     <section id="tab-config" class="tab">
       <div class="panel">
+        <div class="row"><button class="btn" data-goto="#nuevo">← Volver al inicio</button></div>
         <div class="row">
-          <div class="col">
-            <label>Nombre del negocio</label>
-            <input id="cfgNombre" />
-          </div>
-          <div class="col">
-            <label>Moneda</label>
-            <input id="cfgMoneda" value="USD" />
-          </div>
+          <div class="col"><label>Nombre del negocio</label><input id="cfgNombre" /></div>
+          <div class="col"><label>Moneda</label><input id="cfgMoneda" value="USD" /></div>
         </div>
         <div class="row">
-          <div class="col">
-            <label>IVU % (Puerto Rico)</label>
-            <input id="cfgIVU" type="number" step="0.01" min="0" max="25" />
-          </div>
-          <div class="col">
-            <label>Formato de fecha (locale)</label>
-            <input id="cfgLocale" value="es-PR" />
-          </div>
+          <div class="col"><label>IVU % (Puerto Rico)</label><input id="cfgIVU" type="number" step="0.01" min="0" max="25" /></div>
+          <div class="col"><label>Formato de fecha (locale)</label><input id="cfgLocale" value="es-PR" /></div>
         </div>
         <div class="row">
-          <div class="col">
-            <label>Prefijo FAC</label>
-            <input id="cfgPrefFAC" />
-          </div>
-          <div class="col">
-            <label>Siguiente FAC #</label>
-            <input id="cfgNextFAC" type="number" inputmode="numeric" />
-          </div>
+          <div class="col"><label>Prefijo FAC</label><input id="cfgPrefFAC" /></div>
+          <div class="col"><label>Siguiente FAC #</label><input id="cfgNextFAC" type="number" inputmode="numeric" /></div>
         </div>
         <div class="row">
-          <div class="col">
-            <label>Prefijo COT</label>
-            <input id="cfgPrefCOT" />
-          </div>
-          <div class="col">
-            <label>Siguiente COT #</label>
-            <input id="cfgNextCOT" type="number" inputmode="numeric" />
-          </div>
+          <div class="col"><label>Prefijo COT</label><input id="cfgPrefCOT" /></div>
+          <div class="col"><label>Siguiente COT #</label><input id="cfgNextCOT" type="number" inputmode="numeric" /></div>
         </div>
-
         <div class="row">
           <div class="col">
             <label>Logo (PNG/JPG)</label>
             <input id="cfgLogo" type="file" accept="image/png,image/jpeg" />
-            <small class="hint">Se guarda localmente (base64). </small>
+            <small class="hint">Se guarda localmente (base64).</small>
             <div class="logoPreview">
               <img id="cfgLogoPreview" alt="Logo" />
               <button id="btnQuitarLogo" class="btn">Quitar logo</button>
@@ -362,8 +296,6 @@
     </section>
   </main>
 
-  <div id="printArea" class="print-area"></div>
-
   <footer class="no-print footer">
     <small>Oasis • 100% local • Sin dependencias • Hecho para iPad/celular</small>
   </footer>
@@ -371,3 +303,4 @@
   <script src="app.js"></script>
 </body>
 </html>
+
