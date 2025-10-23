@@ -5,9 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Oasis — Facturas & Cotizaciones (Local)</title>
   <link rel="stylesheet" href="styles.css" />
-  <!-- <link rel="manifest" href="manifest.json">  (opcional si la instalas como PWA) -->
 </head>
-<body class="dark">
+<body class="light">
   <!-- Login / PIN -->
   <div id="authOverlay" class="overlay">
     <div class="card">
@@ -59,9 +58,9 @@
     <div class="drawer-footer"><small class="muted">100% local • Sin dependencias</small></div>
   </aside>
 
-  <!-- Topbar (sin botones de navegación) -->
+  <!-- Topbar -->
   <header class="topbar no-print">
-    <div class="brand">
+    <div class="brand container">
       <button id="btnDrawerOpen" class="icon-btn" aria-label="Abrir menú">☰</button>
       <img id="brandLogo" alt="Logo" />
       <div>
@@ -71,7 +70,7 @@
     </div>
   </header>
 
-  <main>
+  <main class="container">
     <!-- NUEVO (Inicio) -->
     <section id="tab-nuevo" class="tab">
       <form id="docForm" class="panel">
@@ -127,19 +126,21 @@
               <button type="button" id="btnAddLinea" class="btn">+ Línea</button>
             </div>
           </div>
-          <table class="table">
-            <thead>
-              <tr>
-                <th style="width:36%">Descripción</th>
-                <th style="width:18%">Detalle</th>
-                <th style="width:16%">Precio</th>
-                <th style="width:14%">Cant.</th>
-                <th style="width:16%">Importe</th>
-                <th class="no-print"></th>
-              </tr>
-            </thead>
-            <tbody id="lineasBody"></tbody>
-          </table>
+          <div class="scroll-x">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th style="width:36%">Descripción</th>
+                  <th style="width:18%">Detalle</th>
+                  <th style="width:16%">Precio</th>
+                  <th style="width:14%">Cant.</th>
+                  <th style="width:16%">Importe</th>
+                  <th class="no-print"></th>
+                </tr>
+              </thead>
+              <tbody id="lineasBody"></tbody>
+            </table>
+          </div>
         </div>
 
         <div class="totals">
@@ -174,35 +175,39 @@
           <button class="btn" data-goto="#nuevo">← Volver al inicio</button>
           <input id="histSearch" placeholder="Buscar por cliente, número o pago…" />
         </div>
-        <table class="table sticky-head">
-          <thead>
-            <tr>
-              <th>Tipo</th><th>Número</th><th>Fecha</th><th>Cliente</th><th>Pago</th><th>Total</th><th>Estado</th>
-              <th class="no-print">Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="histBody"></tbody>
-        </table>
+        <div class="scroll-x">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Tipo</th><th>Número</th><th>Fecha</th><th>Cliente</th><th>Pago</th><th>Total</th><th>Estado</th>
+                <th class="no-print">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="histBody"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
     <!-- CATALOGO -->
     <section id="tab-catalogo" class="tab">
       <div class="panel">
-        <div class="row">
-          <button class="btn" data-goto="#nuevo">← Volver al inicio</button>
-        </div>
+        <div class="row"><button class="btn" data-goto="#nuevo">← Volver al inicio</button></div>
+
         <form id="itemForm" class="row">
           <input id="itemNombre" placeholder="Nombre" required />
-          <input id="itemDesc" placeholder="Descripción" />
+          <input id="itemDesc" placeholder="Descripción (opcional)" />
           <input id="itemPrecio" type="number" step="0.01" inputmode="decimal" placeholder="Precio" required />
-          <button class="btn primary" type="submit">Guardar ítem</button>
+          <input id="itemFoto" type="file" accept="image/png,image/jpeg" />
+          <button class="btn primary" type="submit">Agregar</button>
         </form>
-        <p id="itemMsg" class="msg"></p>
-        <table class="table sticky-head">
-          <thead><tr><th>Nombre</th><th>Descripción</th><th>Precio</th><th class="no-print">Acciones</th></tr></thead>
-          <tbody id="itemsBody"></tbody>
-        </table>
+
+        <div class="scroll-x">
+          <table class="table">
+            <thead><tr><th>Foto</th><th>Nombre</th><th>Descripción</th><th>Precio</th><th class="no-print">Acciones</th></tr></thead>
+            <tbody id="itemsBody"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -239,14 +244,16 @@
           <button id="btnPDF" class="btn">Exportar PDF</button>
         </div>
 
-        <table class="table sticky-head">
-          <thead>
-            <tr>
-              <th>Tipo</th><th>Número</th><th>Fecha</th><th>Cliente</th><th>Pago</th><th>Total</th><th>Estado</th>
-            </tr>
-          </thead>
-          <tbody id="repBody"></tbody>
-        </table>
+        <div class="scroll-x">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Tipo</th><th>Número</th><th>Fecha</th><th>Cliente</th><th>Pago</th><th>Total</th><th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="repBody"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -304,7 +311,9 @@
   <button id="pwaHomeBtn" class="pwa-home no-print" aria-label="Volver al inicio" title="Volver al inicio">🏠</button>
 
   <footer class="no-print footer">
-    <small>Oasis • 100% local • Sin dependencias • Hecho para iPad/celular</small>
+    <div class="container">
+      <small>Oasis • 100% local • Sin dependencias • Hecho para iPad/celular</small>
+    </div>
   </footer>
 
   <script src="app.js"></script>
