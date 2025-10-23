@@ -125,6 +125,23 @@ label { display:block; margin-bottom:6px; color:#cfd3d7; font-weight:600; }
 
 .drawer-footer { margin-top:auto; padding:16px; color: var(--drawer-muted); }
 
+/* ----- Botón flotante PWA: volver al inicio ----- */
+.pwa-home {
+  position: fixed;
+  left: 12px;
+  bottom: 16px;
+  z-index: 60;
+  display: none; /* se muestra solo en modo PWA + fuera de #nuevo */
+  border: none;
+  border-radius: 999px;
+  padding: 12px 14px;
+  font-size: 18px;
+  background: #0b1222;
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.06);
+}
+.pwa-home:active { transform: translateY(1px); }
+
 /* Print styles */
 @media print {
   body { background:#fff; color:#000; }
