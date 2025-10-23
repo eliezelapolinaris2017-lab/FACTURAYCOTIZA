@@ -38,7 +38,7 @@ const Utils = {
   }
 };
 
-// ---------- Sesión (para no pedir PIN en cada sección) ----------
+// ---------- Sesión ----------
 const Session = (() => {
   const KEY = "oasis.session.v1";
   const DURATION_MS = 8 * 60 * 60 * 1000; // 8 horas
@@ -284,15 +284,11 @@ const Reports = (() => {
 // ---------- UI ----------
 const UI = (() => {
   const els = {
-    // Drawer
     drawer: document.getElementById("drawer"),
     drawerOverlay: document.getElementById("drawerOverlay"),
     btnDrawerOpen: document.getElementById("btnDrawerOpen"),
     btnDrawerClose: document.getElementById("btnDrawerClose"),
-
-    // Secciones
     sections: document.querySelectorAll(".tab"),
-
     // Auth
     authOverlay: document.getElementById("authOverlay"),
     authTitle: document.getElementById("authTitle"),
@@ -304,7 +300,6 @@ const UI = (() => {
     authBtn: document.getElementById("authBtn"),
     authMsg: document.getElementById("authMsg"),
     authForm: document.getElementById("authForm"),
-
     // Nuevo
     docForm: document.getElementById("docForm"),
     docTipo: document.getElementById("docTipo"),
@@ -330,18 +325,15 @@ const UI = (() => {
     btnDuplicar: document.getElementById("btnDuplicar"),
     btnAnular: document.getElementById("btnAnular"),
     btnReemitir: document.getElementById("btnReemitir"),
-
     // Historial
     histBody: document.getElementById("histBody"),
     histSearch: document.getElementById("histSearch"),
-
     // Catálogo
     itemForm: document.getElementById("itemForm"),
     itemNombre: document.getElementById("itemNombre"),
     itemDesc: document.getElementById("itemDesc"),
     itemPrecio: document.getElementById("itemPrecio"),
     itemsBody: document.getElementById("itemsBody"),
-
     // Reportes
     repDesde: document.getElementById("repDesde"),
     repHasta: document.getElementById("repHasta"),
@@ -357,89 +349,99 @@ const UI = (() => {
     totALL: document.getElementById("totALL"),
     btnCSV: document.getElementById("btnCSV"),
     btnPDF: document.getElementById("btnPDF"),
+    // PWA home
+    pwaHomeBtn: document.getElementById("pwaHomeBtn"),
   };
 
   let currentDoc = null;
 
-  // Drawer
-  function openDrawer(){ els.drawer.classList.add("open"); document.getElementById("drawerOverlay").classList.add("open"); els.drawer.setAttribute("aria-hidden","false"); }
-  function closeDrawer(){ els.drawer.classList.remove("open"); document.getElementById("drawerOverlay").classList.remove("open"); els.drawer.setAttribute("aria-hidden","true"); }
-  function toggleDrawer(){ els.drawer.classList.contains("open") ? closeDrawer() : openDrawer(); }
+  /* ----- Drawer ----- */
+  function openDrawer(){ els.drawer.classList.add("open"); els.drawerOverlay.classList.add("open"); els.drawer.setAttribute("aria-hidden","false"); }
+  function closeDrawer(){ els.drawer.classList.remove("open"); els.drawerOverlay.classList.remove("open"); els.drawer.setAttribute("aria-hidden","true"); }
+  function toggleDrawer(){ els.drawer.classList.contains("open")?closeDrawer():openDrawer(); }
   els.btnDrawerOpen.addEventListener("click", toggleDrawer);
   els.btnDrawerClose.addEventListener("click", closeDrawer);
-  document.getElementById("drawerOverlay").addEventListener("click", closeDrawer);
-  window.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
+  els.drawerOverlay.addEventListener("click", closeDrawer);
+  window.addEventListener("keydown",(e)=>{ if(e.key==="Escape") closeDrawer(); });
+  document.querySelectorAll(".drawer-item").forEach(b => b.addEventListener("click", ()=> { location.hash = b.dataset.href; closeDrawer(); }));
 
-  // Navegación hash
+  /* ----- Navegación hash ----- */
   const HASH_TO_TAB = { "#nuevo":"tab-nuevo", "#historial":"tab-historial", "#catalogo":"tab-catalogo", "#reportes":"tab-reportes", "#config":"tab-config" };
-  function highlightDrawer(hash) {
-    document.querySelectorAll(".drawer-item").forEach(b => b.classList.toggle("active", b.dataset.href === hash));
-  }
-  function activateTabByHash() {
+  function highlightDrawer(hash){ document.querySelectorAll(".drawer-item").forEach(b => b.classList.toggle("active", b.dataset.href === hash)); }
+  function activateTabByHash(){
     const hash = location.hash || "#nuevo";
     const id = HASH_TO_TAB[hash] || "tab-nuevo";
-    els.sections.forEach(s => s.classList.remove("active"));
+    els.sections.forEach(s=>s.classList.remove("active"));
     document.getElementById(id).classList.add("active");
     highlightDrawer(hash);
-    if (id==="tab-historial") renderHistorial();
-    if (id==="tab-catalogo") renderItems();
-    if (id==="tab-reportes") runReportCurrent();
-    if (id==="tab-config") loadConfigForm();
+    // Render según sección
+    if(id==="tab-historial") renderHistorial();
+    if(id==="tab-catalogo") renderItems();
+    if(id==="tab-reportes") runReportCurrent();
+    if(id==="tab-config") loadConfigForm();
+    // Visibilidad del botón PWA home
+    updatePwaHomeVisibility();
   }
   window.addEventListener("hashchange", activateTabByHash);
-  document.querySelectorAll(".drawer-item").forEach(b => b.addEventListener("click", () => { location.hash = b.dataset.href; closeDrawer(); }));
 
-  // Botones "Volver al inicio"
+  /* ----- Botón PWA: volver al inicio ----- */
+  function isStandalone() {
+    // iOS: navigator.standalone ; Android/otros: matchMedia
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  }
+  function updatePwaHomeVisibility() {
+    if (!els.pwaHomeBtn) return;
+    const onInicio = (location.hash || "#nuevo") === "#nuevo";
+    els.pwaHomeBtn.style.display = (isStandalone() && !onInicio) ? "inline-flex" : "none";
+  }
+  els.pwaHomeBtn.addEventListener("click", () => {
+    // Ir al inicio y (opcional) abrir el menú principal si quieres ver las opciones
+    location.hash = "#nuevo";
+    // setTimeout(()=> document.getElementById("btnDrawerOpen")?.click(), 50); // descomenta si quieres abrir el drawer
+  });
+
+  // Atajo: botones "Volver al inicio"
   document.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-goto]");
     if (btn) { e.preventDefault(); location.hash = btn.getAttribute("data-goto"); }
   });
 
-  // --- AUTH / PIN ---
-  async function initAuth() {
-    if (Session.isActive()) { document.getElementById("authOverlay").style.display = "none"; afterLogin(); return; }
-    const s = Store.get("settings");
-    if (!s.pinHash) {
-      authNewPIN();
-    } else {
-      authAskPIN();
+  /* -------- AUTH / PIN -------- */
+  async function initAuth(){
+    if(Session.isActive()){ els.authOverlay.style.display="none"; afterLogin(); return; }
+    const s=Store.get("settings");
+    if(!s.pinHash){ // Crear PIN
+      setAuthUI({ title:"Protege tu app", subtitle:"Crea un PIN para este dispositivo.", labelPIN:"Elige un PIN", newPIN:true, btnText:"Crear PIN" });
+      els.authForm.onsubmit=async(e)=>{ e.preventDefault();
+        const p1=els.authPin.value.trim(), p2=els.authPin2.value.trim();
+        if(p1.length<4) return showAuthMsg("El PIN debe tener al menos 4 dígitos.");
+        if(p1!==p2) return showAuthMsg("Los PIN no coinciden.");
+        const hash=await Utils.hashPIN(p1); Store.setPINHash(hash); Session.start();
+        els.authOverlay.style.display="none"; afterLogin();
+      };
+    } else { // Pedir PIN
+      setAuthUI({ title:"Ingresa tu PIN", subtitle:"Tu PIN se guarda localmente.", labelPIN:"PIN", newPIN:false, btnText:"Entrar" });
+      els.authForm.onsubmit=async(e)=>{ e.preventDefault();
+        const p=els.authPin.value.trim(); const hash=await Utils.hashPIN(p);
+        if(hash===Store.get("settings").pinHash){ Session.start(); els.authOverlay.style.display="none"; afterLogin(); }
+        else showAuthMsg("PIN incorrecto.");
+      };
     }
   }
-  function authNewPIN() {
-    setAuthUI({ title:"Protege tu app", subtitle:"Crea un PIN para este dispositivo.", labelPIN:"Elige un PIN", newPIN:true, btnText:"Crear PIN" });
-    els.authForm.onsubmit = async (e) => {
-      e.preventDefault();
-      const p1 = els.authPin.value.trim(), p2 = els.authPin2.value.trim();
-      if (p1.length < 4) return showAuthMsg("El PIN debe tener al menos 4 dígitos.");
-      if (p1 !== p2) return showAuthMsg("Los PIN no coinciden.");
-      const hash = await Utils.hashPIN(p1); Store.setPINHash(hash); Session.start();
-      document.getElementById("authOverlay").style.display = "none"; afterLogin();
-    };
-  }
-  function authAskPIN() {
-    setAuthUI({ title:"Ingresa tu PIN", subtitle:"Tu PIN se guarda localmente.", labelPIN:"PIN", newPIN:false, btnText:"Entrar" });
-    els.authForm.onsubmit = async (e) => {
-      e.preventDefault();
-      const p = els.authPin.value.trim(); const hash = await Utils.hashPIN(p);
-      if (hash === Store.get("settings").pinHash) { Session.start(); document.getElementById("authOverlay").style.display = "none"; afterLogin(); }
-      else showAuthMsg("PIN incorrecto.");
-    };
-  }
   function setAuthUI({title, subtitle, labelPIN, newPIN, btnText}) {
-    document.getElementById("authTitle").textContent = title;
-    document.getElementById("authSubtitle").textContent = subtitle;
-    document.getElementById("authLabelPIN").textContent = labelPIN;
-    document.getElementById("authLabelPIN2").classList.toggle("hidden", !newPIN);
-    document.getElementById("authPin2").classList.toggle("hidden", !newPIN);
-    document.getElementById("authBtn").textContent = btnText;
-    document.getElementById("authMsg").textContent = "";
+    els.authTitle.textContent = title;
+    els.authSubtitle.textContent = subtitle;
+    els.authLabelPIN.textContent = labelPIN;
+    els.authLabelPIN2.classList.toggle("hidden", !newPIN);
+    els.authPin2.classList.toggle("hidden", !newPIN);
+    els.authBtn.textContent = btnText;
+    els.authMsg.textContent = "";
   }
-  function showAuthMsg(t) { document.getElementById("authMsg").textContent = t; }
-  ["click","keydown","touchstart"].forEach(evt => window.addEventListener(evt, () => Session.touch(), { passive:true }));
-  document.getElementById("btnLogout")?.addEventListener("click", () => { Session.end(); location.reload(); });
+  function showAuthMsg(t){ els.authMsg.textContent=t; }
+  ["click","keydown","touchstart"].forEach(evt=>window.addEventListener(evt,()=>Session.touch(),{passive:true}));
 
-  // --- Post-login setup ---
-  function afterLogin() {
+  /* -------- Post-login -------- */
+  function afterLogin(){
     loadBrand();
     loadNewDoc(Docs.createEmpty());
     renderItems();
@@ -447,270 +449,189 @@ const UI = (() => {
     renderHistorial();
     loadConfigForm();
     activateTabByHash();
+    // Al arrancar, decidir si mostrar el botón PWA
+    updatePwaHomeVisibility();
   }
-  function loadBrand() {
-    const s = Store.get("settings");
-    document.getElementById("drawerName").textContent = s.businessName || "Oasis";
-    const brandLogo = document.getElementById("brandLogo");
-    const drawerLogo = document.getElementById("drawerLogo");
-    if (s.logoDataUrl) { brandLogo.src = s.logoDataUrl; brandLogo.style.display="block"; drawerLogo.src = s.logoDataUrl; drawerLogo.style.display="block"; }
+
+  function loadBrand(){
+    const s=Store.get("settings");
+    document.getElementById("drawerName").textContent=s.businessName||"Oasis";
+    const brandLogo=document.getElementById("brandLogo");
+    const drawerLogo=document.getElementById("drawerLogo");
+    if(s.logoDataUrl){ brandLogo.src=s.logoDataUrl; brandLogo.style.display="block"; drawerLogo.src=s.logoDataUrl; drawerLogo.style.display="block"; }
     else { brandLogo.style.display="none"; drawerLogo.style.display="none"; }
   }
 
-  // --- NUEVO ---
-  function loadNewDoc(doc) {
-    currentDoc = doc;
-    const s = Store.get("settings");
-    els.docTipo.value = doc.type;
-    els.docPrefijo.value = doc.prefix || Numbering.currentPrefix(doc.type);
-    els.docNumero.value = doc.number;
-    els.docFecha.value = doc.date || Utils.todayISO();
-    els.docCliente.value = doc.client || "";
-    els.docNotas.value = doc.notes || "";
-    els.docPago.value = doc.paymentMethod || "";
-    els.docPagoRef.value = doc.paymentRef || "";
-    els.docDescuento.value = doc.discountPct ?? 0;
-    els.docImpuesto.value = doc.taxPct ?? s.taxPercent;
-    els.lineasBody.innerHTML = "";
-    (doc.lines || []).forEach(addLineaRow);
-    if ((doc.lines || []).length === 0) addLineaRow();
+  /* ---- NUEVO ---- */
+  // (… Lógica de documento igual que antes …)
+  function loadNewDoc(doc){
+    currentDoc=doc;
+    const s=Store.get("settings");
+    // asignaciones
+    document.getElementById("docTipo").value=doc.type;
+    document.getElementById("docPrefijo").value=doc.prefix||Numbering.currentPrefix(doc.type);
+    document.getElementById("docNumero").value=doc.number;
+    document.getElementById("docFecha").value=doc.date||Utils.todayISO();
+    document.getElementById("docCliente").value=doc.client||"";
+    document.getElementById("docNotas").value=doc.notes||"";
+    document.getElementById("docPago").value=doc.paymentMethod||"";
+    document.getElementById("docPagoRef").value=doc.paymentRef||"";
+    document.getElementById("docDescuento").value=doc.discountPct??0;
+    document.getElementById("docImpuesto").value=doc.taxPct??s.taxPercent;
+    els.lineasBody.innerHTML="";
+    (doc.lines||[]).forEach(addLineaRow);
+    if((doc.lines||[]).length===0) addLineaRow();
     updateTotals(); updateDocButtons();
   }
-  function updateDocButtons() {
-    const disabled = currentDoc.status === "anulado";
-    els.btnAnular.disabled = disabled;
-    els.btnReemitir.disabled = disabled;
-    els.btnGuardarFinal.disabled = disabled;
-  }
-  function addLineaRow(line = { name:"", desc:"", price:0, qty:1 }) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
+  function updateDocButtons(){ const isAnnul=currentDoc.status==="anulado"; els.btnAnular.disabled=isAnnul; els.btnReemitir.disabled=isAnnul; els.btnGuardarFinal.disabled=isAnnul; }
+  function addLineaRow(line={name:"",desc:"",price:0,qty:1}){
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
       <td><input class="l-name" placeholder="Nombre ítem" value="${escapeAttr(line.name||"")}"></td>
       <td><input class="l-desc" placeholder="Descripción" value="${escapeAttr(line.desc||"")}"></td>
       <td><input class="l-price" type="number" step="0.01" inputmode="decimal" value="${Number(line.price||0)}"></td>
       <td><input class="l-qty" type="number" step="1" inputmode="numeric" value="${Number(line.qty||1)}"></td>
       <td class="right l-imp">$0.00</td>
       <td class="no-print"><button type="button" class="btn btn-del">X</button></td>`;
-    const priceEl = tr.querySelector(".l-price");
-    const qtyEl = tr.querySelector(".l-qty");
-    const recalcLine = () => { const s = Store.get("settings"); const imp = Utils.toNumber(priceEl.value) * Utils.toNumber(qtyEl.value||1); tr.querySelector(".l-imp").textContent = Utils.fmtMoney(imp, s.currency, s.locale); updateTotals(); };
-    [".l-price",".l-qty",".l-name",".l-desc"].forEach(sel => tr.querySelector(sel).addEventListener("input", recalcLine));
-    tr.querySelector(".btn-del").addEventListener("click", () => { tr.remove(); updateTotals(); });
+    const priceEl=tr.querySelector(".l-price");
+    const qtyEl=tr.querySelector(".l-qty");
+    const recalcLine=()=>{ const s=Store.get("settings"); const imp=Utils.toNumber(priceEl.value)*Utils.toNumber(qtyEl.value||1); tr.querySelector(".l-imp").textContent=Utils.fmtMoney(imp,s.currency,s.locale); updateTotals(); };
+    [".l-price",".l-qty",".l-name",".l-desc"].forEach(sel=>tr.querySelector(sel).addEventListener("input",recalcLine));
+    tr.querySelector(".btn-del").addEventListener("click",()=>{ tr.remove(); updateTotals(); });
     els.lineasBody.appendChild(tr); recalcLine();
   }
-  function collectDocFromForm() {
-    const lines = [...els.lineasBody.querySelectorAll("tr")].map(tr => ({
+  function collectDocFromForm(){
+    const lines=[...els.lineasBody.querySelectorAll("tr")].map(tr=>({
       name: tr.querySelector(".l-name").value.trim(),
       desc: tr.querySelector(".l-desc").value.trim(),
       price: Utils.toNumber(tr.querySelector(".l-price").value),
-      qty: Utils.toNumber(tr.querySelector(".l-qty").value || 1)
-    })).filter(l => l.name || l.desc || l.price);
-    return {
-      ...currentDoc,
-      type: els.docTipo.value,
-      prefix: els.docPrefijo.value.trim() || Numbering.currentPrefix(els.docTipo.value),
-      number: Utils.toNumber(els.docNumero.value) || currentDoc.number,
-      date: els.docFecha.value || Utils.todayISO(),
-      client: els.docCliente.value.trim(),
-      notes: els.docNotas.value.trim(),
-      paymentMethod: els.docPago.value || "",
-      paymentRef: els.docPagoRef.value.trim() || "",
-      discountPct: Utils.toNumber(els.docDescuento.value || 0),
-      taxPct: Utils.toNumber(els.docImpuesto.value || 0),
-      lines
-    };
+      qty: Utils.toNumber(tr.querySelector(".l-qty").value||1)
+    })).filter(l=>l.name||l.desc||l.price);
+    return { ...currentDoc, type:els.docTipo.value, prefix:els.docPrefijo.value.trim()||Numbering.currentPrefix(els.docTipo.value),
+      number:Utils.toNumber(els.docNumero.value)||currentDoc.number, date:els.docFecha.value||Utils.todayISO(),
+      client:els.docCliente.value.trim(), notes:els.docNotas.value.trim(),
+      paymentMethod:els.docPago.value||"", paymentRef:els.docPagoRef.value.trim()||"",
+      discountPct:Utils.toNumber(els.docDescuento.value||0), taxPct:Utils.toNumber(els.docImpuesto.value||0), lines };
   }
-  function updateTotals() {
-    const doc = collectDocFromForm();
-    const s = Store.get("settings");
-    const t = Docs.calc(doc);
-    els.sumSubtotal.textContent = Utils.fmtMoney(t.subtotal, s.currency, s.locale);
-    els.sumDesc.textContent = Utils.fmtMoney(t.descAmt, s.currency, s.locale);
-    els.sumImpuesto.textContent = Utils.fmtMoney(t.taxAmt, s.currency, s.locale);
-    els.sumTotal.textContent = Utils.fmtMoney(t.total, s.currency, s.locale);
+  function updateTotals(){
+    const doc=collectDocFromForm(); const s=Store.get("settings"); const t=Docs.calc(doc);
+    els.sumSubtotal.textContent=Utils.fmtMoney(t.subtotal,s.currency,s.locale);
+    els.sumDesc.textContent=Utils.fmtMoney(t.descAmt,s.currency,s.locale);
+    els.sumImpuesto.textContent=Utils.fmtMoney(t.taxAmt,s.currency,s.locale);
+    els.sumTotal.textContent=Utils.fmtMoney(t.total,s.currency,s.locale);
   }
 
-  els.docTipo.addEventListener("change", () => {
-    const tipo = els.docTipo.value;
-    els.docPrefijo.value = Numbering.currentPrefix(tipo);
-    els.docNumero.value = Numbering.next(tipo);
-    currentDoc.type = tipo; currentDoc.prefix = els.docPrefijo.value; currentDoc.number = Number(els.docNumero.value);
-  });
-  els.btnAddLinea.addEventListener("click", () => addLineaRow());
-  function fillQuickAdd() {
-    const items = Store.getItems();
-    els.catalogQuickAdd.innerHTML = `<option value="">— del catálogo —</option>` + items.map(i => `<option value="${i.id}">${escapeHTML(i.name)} (${Utils.fmtMoney(i.price)})</option>`).join("");
-  }
-  els.btnQuickAdd.addEventListener("click", () => {
-    const id = els.catalogQuickAdd.value; if (!id) return;
-    const it = Store.getItems().find(i => i.id === id); if (!it) return;
-    addLineaRow({ name: it.name, desc: it.desc || "", price: it.price || 0, qty: 1 });
-  });
-  els.docForm.addEventListener("input", (e) => { if (e.target.id === "docDescuento" || e.target.id === "docImpuesto") updateTotals(); });
+  // Eventos documento
+  els.docTipo.addEventListener("change",()=>{ const tipo=els.docTipo.value; document.getElementById("docPrefijo").value=Numbering.currentPrefix(tipo); document.getElementById("docNumero").value=Numbering.next(tipo); currentDoc.type=tipo; currentDoc.prefix=document.getElementById("docPrefijo").value; currentDoc.number=Number(document.getElementById("docNumero").value); });
+  els.btnAddLinea.addEventListener("click",()=>addLineaRow());
+  function fillQuickAdd(){ const items=Store.getItems(); els.catalogQuickAdd.innerHTML=`<option value="">— del catálogo —</option>`+items.map(i=>`<option value="${i.id}">${escapeHTML(i.name)} (${Utils.fmtMoney(i.price)})</option>`).join(""); }
+  els.btnQuickAdd.addEventListener("click",()=>{ const id=els.catalogQuickAdd.value; if(!id) return; const item=Store.getItems().find(i=>i.id===id); if(!item) return; addLineaRow({name:item.name,desc:item.desc||"",price:item.price||0,qty:1}); });
+  els.docForm.addEventListener("input",(e)=>{ if(e.target.id==="docDescuento"||e.target.id==="docImpuesto") updateTotals(); });
 
   // Guardado / PDF
-  els.btnGuardarBorrador.addEventListener("click", () => {
-    currentDoc = collectDocFromForm(); currentDoc.status = "borrador"; Store.saveDoc(currentDoc);
-    alert("Borrador guardado."); renderHistorial();
-  });
-  els.docForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    currentDoc = collectDocFromForm(); currentDoc.status = "final"; Store.saveDoc(currentDoc); renderHistorial();
-    Printer.openPrint(Printer.docHTML(currentDoc));
-  });
-  els.btnDuplicar.addEventListener("click", () => {
-    const tipo = currentDoc.type === "COT" ? "FAC" : currentDoc.type;
-    const dup = Docs.duplicateAs(currentDoc, tipo);
-    loadNewDoc(dup); alert(`Documento duplicado como ${tipo}.`);
-  });
-  els.btnAnular.addEventListener("click", () => {
-    if (!confirm("¿Anular este documento?")) return;
-    currentDoc.status = "anulado"; Store.saveDoc(currentDoc); updateDocButtons(); renderHistorial(); alert("Documento anulado.");
-  });
-  els.btnReemitir.addEventListener("click", () => {
-    if (!confirm("Asignará un nuevo número según el consecutivo actual. ¿Continuar?")) return;
-    currentDoc = Docs.reemitNumber(collectDocFromForm()); Store.saveDoc(currentDoc);
-    els.docPrefijo.value = currentDoc.prefix; els.docNumero.value = currentDoc.number; renderHistorial(); alert("Número re-emitido.");
-  });
+  els.btnGuardarBorrador.addEventListener("click",()=>{ currentDoc=collectDocFromForm(); currentDoc.status="borrador"; Store.saveDoc(currentDoc); alert("Borrador guardado."); renderHistorial(); });
+  els.docForm.addEventListener("submit",(e)=>{ e.preventDefault(); currentDoc=collectDocFromForm(); currentDoc.status="final"; Store.saveDoc(currentDoc); renderHistorial(); Printer.openPrint(Printer.docHTML(currentDoc)); });
+  els.btnDuplicar.addEventListener("click",()=>{ const tipo=currentDoc.type==="COT"?"FAC":currentDoc.type; const dup=Docs.duplicateAs(currentDoc,tipo); loadNewDoc(dup); alert(`Documento duplicado como ${tipo}.`); });
+  els.btnAnular.addEventListener("click",()=>{ if(!confirm("¿Anular este documento?")) return; currentDoc.status="anulado"; Store.saveDoc(currentDoc); updateDocButtons(); renderHistorial(); alert("Documento anulado."); });
+  els.btnReemitir.addEventListener("click",()=>{ if(!confirm("Asignará un nuevo número según el consecutivo actual. ¿Continuar?")) return; currentDoc=Docs.reemitNumber(collectDocFromForm()); Store.saveDoc(currentDoc); document.getElementById("docPrefijo").value=currentDoc.prefix; document.getElementById("docNumero").value=currentDoc.number; renderHistorial(); alert("Número re-emitido."); });
 
-  // --- Historial ---
-  function renderHistorial() {
-    const q = (els.histSearch?.value || "").toLowerCase().trim();
-    const s = Store.get("settings");
-    const docs = Store.getDocs().filter(d => {
-      if (!q) return true;
-      return (d.client||"").toLowerCase().includes(q) || `${d.prefix||""}${d.number}`.toLowerCase().includes(q) || (d.paymentMethod||"").toLowerCase().includes(q);
-    });
-    if (!els.histBody) return;
-    els.histBody.innerHTML = docs.map(d => {
-      const t = Docs.calc(d);
-      const pago = d.paymentMethod ? escapeHTML(d.paymentMethod) : "-";
+  /* ---- Historial ---- */
+  function renderHistorial(){
+    const q=els.histSearch?.value?.toLowerCase()?.trim()||"";
+    const s=Store.get("settings");
+    const docs=Store.getDocs().filter(d=>{ if(!q) return true; return (d.client||"").toLowerCase().includes(q) || `${d.prefix||""}${d.number}`.toLowerCase().includes(q) || (d.paymentMethod||"").toLowerCase().includes(q); });
+    if(!els.histBody) return;
+    els.histBody.innerHTML=docs.map(d=>{ const t=Docs.calc(d); const pago=d.paymentMethod?`${escapeHTML(d.paymentMethod)}`:"-";
       return `<tr>
-        <td>${d.type}</td>
-        <td>${d.prefix||""}${d.number}</td>
-        <td>${Utils.formatDate(d.date, s.locale)}</td>
-        <td>${escapeHTML(d.client||"")}</td>
-        <td>${pago}</td>
-        <td class="right">${Utils.fmtMoney(t.total, s.currency, s.locale)}</td>
-        <td>${d.status}</td>
+        <td>${d.type}</td><td>${d.prefix||""}${d.number}</td><td>${Utils.formatDate(d.date,s.locale)}</td>
+        <td>${escapeHTML(d.client||"")}</td><td>${pago}</td>
+        <td class="right">${Utils.fmtMoney(t.total,s.currency,s.locale)}</td><td>${d.status}</td>
         <td class="no-print">
           <button class="btn btn-open" data-id="${d.id}">Abrir</button>
           <button class="btn btn-dupe" data-id="${d.id}">Duplicar</button>
           <button class="btn warn btn-ann" data-id="${d.id}">Anular</button>
           <button class="btn btn-pdf" data-id="${d.id}">PDF</button>
-        </td>
-      </tr>`;
+        </td></tr>`;
     }).join("");
-    // acciones
-    els.histBody.querySelectorAll(".btn-open").forEach(b => b.onclick = () => { const d = Store.getDocs().find(x => x.id === b.dataset.id); loadNewDoc(structuredClone(d)); location.hash = "#nuevo"; });
-    els.histBody.querySelectorAll(".btn-dupe").forEach(b => b.onclick = () => { const d = Store.getDocs().find(x => x.id === b.dataset.id); const tipo = d.type === "COT" ? "FAC" : d.type; const dup = Docs.duplicateAs(d, tipo); loadNewDoc(dup); location.hash = "#nuevo"; });
-    els.histBody.querySelectorAll(".btn-ann").forEach(b => b.onclick = () => { const d = Store.getDocs().find(x => x.id === b.dataset.id); if (!confirm("¿Anular este documento?")) return; d.status = "anulado"; Store.saveDoc(d); renderHistorial(); });
-    els.histBody.querySelectorAll(".btn-pdf").forEach(b => b.onclick = () => { const d = Store.getDocs().find(x => x.id === b.dataset.id); Printer.openPrint(Printer.docHTML(d)); });
+    els.histBody.querySelectorAll(".btn-open").forEach(b=>b.onclick=()=>{ const d=Store.getDocs().find(x=>x.id===b.dataset.id); loadNewDoc(structuredClone(d)); location.hash="#nuevo"; });
+    els.histBody.querySelectorAll(".btn-dupe").forEach(b=>b.onclick=()=>{ const d=Store.getDocs().find(x=>x.id===b.dataset.id); const tipo=d.type==="COT"?"FAC":d.type; const dup=Docs.duplicateAs(d,tipo); loadNewDoc(dup); location.hash="#nuevo"; });
+    els.histBody.querySelectorAll(".btn-ann").forEach(b=>b.onclick=()=>{ const d=Store.getDocs().find(x=>x.id===b.dataset.id); if(!confirm("¿Anular este documento?")) return; d.status="anulado"; Store.saveDoc(d); renderHistorial(); });
+    els.histBody.querySelectorAll(".btn-pdf").forEach(b=>b.onclick=()=>{ const d=Store.getDocs().find(x=>x.id===b.dataset.id); const html=Printer.docHTML(d); Printer.openPrint(html); });
     els.histSearch?.addEventListener("input", renderHistorial, { once:true });
   }
 
-  // --- Catálogo ---
-  function renderItems() {
-    const items = Store.getItems();
-    if (!els.itemsBody) return;
-    els.itemsBody.innerHTML = items.map(it => `
+  /* ---- Catálogo ---- */
+  function renderItems(){
+    const items=Store.getItems(); if(!els.itemsBody) return;
+    els.itemsBody.innerHTML=items.map(it=>`
       <tr>
         <td><input data-id="${it.id}" class="i-name" value="${escapeAttr(it.name)}"></td>
         <td><input data-id="${it.id}" class="i-desc" value="${escapeAttr(it.desc||"")}"></td>
         <td><input data-id="${it.id}" class="i-price" type="number" step="0.01" inputmode="decimal" value="${Number(it.price||0)}"></td>
         <td class="no-print"><button class="btn i-del" data-id="${it.id}">Eliminar</button></td>
       </tr>`).join("");
-    els.itemsBody.querySelectorAll(".i-name,.i-desc,.i-price").forEach(inp => {
-      inp.addEventListener("change", () => {
-        const id = inp.dataset.id;
-        const arr = Store.getItems();
-        const it = arr.find(i => i.id === id); if (!it) return;
-        if (inp.classList.contains("i-name")) it.name = inp.value.trim();
-        if (inp.classList.contains("i-desc")) it.desc = inp.value.trim();
-        if (inp.classList.contains("i-price")) it.price = Utils.toNumber(inp.value);
-        Store.setItems(arr); fillQuickAdd();
+    els.itemsBody.querySelectorAll(".i-name,.i-desc,.i-price").forEach(inp=>{
+      inp.addEventListener("change",()=>{ const id=inp.dataset.id; const items=Store.getItems(); const it=items.find(i=>i.id===id); if(!it) return;
+        if(inp.classList.contains("i-name")) it.name=inp.value.trim();
+        if(inp.classList.contains("i-desc")) it.desc=inp.value.trim();
+        if(inp.classList.contains("i-price")) it.price=Utils.toNumber(inp.value);
+        Store.setItems(items); fillQuickAdd();
       });
     });
-    els.itemsBody.querySelectorAll(".i-del").forEach(btn => btn.addEventListener("click", () => {
-      if (!confirm("¿Eliminar este ítem del catálogo?")) return;
-      const id = btn.dataset.id;
-      Store.setItems(Store.getItems().filter(i => i.id !== id));
-      renderItems(); fillQuickAdd();
-    }));
+    els.itemsBody.querySelectorAll(".i-del").forEach(btn=>{
+      btn.addEventListener("click",()=>{ if(!confirm("¿Eliminar este ítem del catálogo?")) return; const id=btn.dataset.id; const items=Store.getItems().filter(i=>i.id!==id); Store.setItems(items); renderItems(); fillQuickAdd(); });
+    });
   }
+  function fillQuickAdd(){ const items=Store.getItems(); els.catalogQuickAdd.innerHTML=`<option value="">— del catálogo —</option>`+items.map(i=>`<option value="${i.id}">${escapeHTML(i.name)} (${Utils.fmtMoney(i.price)})</option>`).join(""); }
 
-  // --- Reportes ---
-  function renderReportTable(list) {
-    const s = Store.get("settings");
-    if (!els.repBody) return;
-    els.repBody.innerHTML = list.map(d => {
-      const t = Docs.calc(d).total;
-      return `<tr>
-        <td>${d.type}</td>
-        <td>${d.prefix||""}${d.number}</td>
-        <td>${Utils.formatDate(d.date, s.locale)}</td>
-        <td>${escapeHTML(d.client||"")}</td>
-        <td>${escapeHTML(d.paymentMethod||"-")}</td>
-        <td class="right">${Utils.fmtMoney(t, s.currency, s.locale)}</td>
-        <td>${d.status}</td>
-      </tr>`;
+  /* ---- Reportes ---- */
+  function renderReportTable(list){
+    const s=Store.get("settings"); if(!els.repBody) return;
+    els.repBody.innerHTML=list.map(d=>{ const t=Docs.calc(d).total;
+      return `<tr><td>${d.type}</td><td>${d.prefix||""}${d.number}</td><td>${Utils.formatDate(d.date,s.locale)}</td><td>${escapeHTML(d.client||"")}</td><td>${escapeHTML(d.paymentMethod||"-")}</td><td class="right">${Utils.fmtMoney(t,s.currency,s.locale)}</td><td>${d.status}</td></tr>`;
     }).join("");
-    const sum = Reports.summarize(list);
-    document.getElementById("cntFAC").textContent = sum.counts.FAC||0;
-    document.getElementById("cntCOT").textContent = sum.counts.COT||0;
-    document.getElementById("cntALL").textContent = sum.counts.ALL||0;
-    document.getElementById("totFAC").textContent = Utils.fmtMoney(sum.totals.FAC||0, s.currency, s.locale);
-    document.getElementById("totCOT").textContent = Utils.fmtMoney(sum.totals.COT||0, s.currency, s.locale);
-    document.getElementById("totALL").textContent = Utils.fmtMoney(sum.totals.ALL||0, s.currency, s.locale);
+    const sum=Reports.summarize(list);
+    document.getElementById("cntFAC").textContent=sum.counts.FAC||0;
+    document.getElementById("cntCOT").textContent=sum.counts.COT||0;
+    document.getElementById("cntALL").textContent=sum.counts.ALL||0;
+    document.getElementById("totFAC").textContent=Utils.fmtMoney(sum.totals.FAC||0,s.currency,s.locale);
+    document.getElementById("totCOT").textContent=Utils.fmtMoney(sum.totals.COT||0,s.currency,s.locale);
+    document.getElementById("totALL").textContent=Utils.fmtMoney(sum.totals.ALL||0,s.currency,s.locale);
   }
-  function runReportRange() { const d = els.repDesde.value; const h = els.repHasta.value; const list = Reports.filterByRange(d, h); renderReportTable(list); return { list, label: labelFromRange(d,h) }; }
-  function runReportMonth() { const m = els.repMes.value; if (!m) { alert("Selecciona un mes."); return { list:[], label:"Mes (sin seleccionar)" }; } const list = Reports.filterByMonth(m); renderReportTable(list); return { list, label: labelFromMonth(m) }; }
-  function runReportCurrent() { const now = new Date(); const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`; els.repMes.value = ym; return runReportMonth(); }
+  function runReportRange(){ const d=els.repDesde.value; const h=els.repHasta.value; const list=Reports.filterByRange(d,h); renderReportTable(list); return { list, label: labelFromRange(d,h) }; }
+  function runReportMonth(){ const m=els.repMes.value; if(!m){ alert("Selecciona un mes."); return { list:[], label:"Mes (sin seleccionar)" }; } const list=Reports.filterByMonth(m); renderReportTable(list); return { list, label: labelFromMonth(m) }; }
+  function runReportCurrent(){ const now=new Date(); const ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`; els.repMes.value=ym; return runReportMonth(); }
   function labelFromRange(d,h){ if(d&&h) return `${Utils.formatDate(d,Store.get("settings").locale)} a ${Utils.formatDate(h,Store.get("settings").locale)}`; if(d) return `Desde ${Utils.formatDate(d)}`; if(h) return `Hasta ${Utils.formatDate(h)}`; return "Todo"; }
   function labelFromMonth(m){ const [y,mm]=m.split("-"); return `${mm}/${y}`; }
-  els.btnRepRango?.addEventListener("click", (e) => { e.preventDefault(); runReportRange(); });
-  els.btnRepMes?.addEventListener("click", (e) => { e.preventDefault(); runReportMonth(); });
-  els.btnCSV?.addEventListener("click", () => { const { list, label } = (els.repMes.value ? runReportMonth() : runReportRange()); const csv = Reports.toCSV(list); Utils.download(`reporte_${label.replace(/[^\dA-Za-z_-]+/g,"_")}.csv`, csv); });
-  els.btnPDF?.addEventListener("click", () => { const { list, label } = (els.repMes.value ? runReportMonth() : runReportRange()); Printer.openPrint(Printer.reportHTML(list, label)); });
+  els.btnRepRango?.addEventListener("click",(e)=>{ e.preventDefault(); runReportRange(); });
+  els.btnRepMes?.addEventListener("click",(e)=>{ e.preventDefault(); runReportMonth(); });
+  els.btnCSV?.addEventListener("click",()=>{ const {list,label}=(els.repMes.value?runReportMonth():runReportRange()); const csv=Reports.toCSV(list); const safe=label.replace(/[^\dA-Za-z_-]+/g,"_"); Utils.download(`reporte_${safe}.csv`, csv); });
+  els.btnPDF?.addEventListener("click",()=>{ const {list,label}=(els.repMes.value?runReportMonth():runReportRange()); const html=Printer.reportHTML(list,label); Printer.openPrint(html); });
 
-  // --- Config ---
-  function loadConfigForm() {
-    const s = Store.get("settings");
-    document.getElementById("cfgNombre").value = s.businessName || "";
-    document.getElementById("cfgMoneda").value = s.currency || "USD";
-    document.getElementById("cfgIVU").value = s.taxPercent ?? 11.5;
-    document.getElementById("cfgLocale").value = s.locale || "es-PR";
-    document.getElementById("cfgPrefFAC").value = s.prefixes.FAC || "FAC-";
-    document.getElementById("cfgNextFAC").value = s.counters.FAC || 1;
-    document.getElementById("cfgPrefCOT").value = s.prefixes.COT || "COT-";
-    document.getElementById("cfgNextCOT").value = s.counters.COT || 1;
-    const p = document.getElementById("cfgLogoPreview");
-    if (s.logoDataUrl) { p.src = s.logoDataUrl; p.style.display="block"; } else { p.removeAttribute("src"); p.style.display="none"; }
+  /* ---- Config ---- */
+  function loadConfigForm(){
+    const s=Store.get("settings");
+    document.getElementById("cfgNombre").value=s.businessName||"";
+    document.getElementById("cfgMoneda").value=s.currency||"USD";
+    document.getElementById("cfgIVU").value=s.taxPercent??11.5;
+    document.getElementById("cfgLocale").value=s.locale||"es-PR";
+    document.getElementById("cfgPrefFAC").value=s.prefixes.FAC||"FAC-";
+    document.getElementById("cfgNextFAC").value=s.counters.FAC||1;
+    document.getElementById("cfgPrefCOT").value=s.prefixes.COT||"COT-";
+    document.getElementById("cfgNextCOT").value=s.counters.COT||1;
+    const p=document.getElementById("cfgLogoPreview");
+    if(s.logoDataUrl){ p.src=s.logoDataUrl; p.style.display="block"; } else { p.removeAttribute("src"); p.style.display="none"; }
   }
-  document.getElementById("btnGuardarConfig")?.addEventListener("click", () => {
-    const patch = {
-      businessName: document.getElementById("cfgNombre").value.trim(),
-      currency: (document.getElementById("cfgMoneda").value||"USD").toUpperCase(),
-      taxPercent: Utils.toNumber(document.getElementById("cfgIVU").value),
-      locale: document.getElementById("cfgLocale").value.trim() || "es-PR"
-    };
-    Store.updateSettings(patch);
-    Numbering.setPrefix("FAC", document.getElementById("cfgPrefFAC").value);
-    Numbering.setPrefix("COT", document.getElementById("cfgPrefCOT").value);
-    Numbering.setCounter("FAC", Utils.toNumber(document.getElementById("cfgNextFAC").value));
-    Numbering.setCounter("COT", Utils.toNumber(document.getElementById("cfgNextCOT").value));
-    loadBrand(); fillQuickAdd(); updateTotals(); alert("Configuración guardada.");
-  });
-  document.getElementById("cfgLogo")?.addEventListener("change", () => {
-    const file = document.getElementById("cfgLogo").files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => { Store.updateSettings({ logoDataUrl: reader.result }); loadBrand(); const p = document.getElementById("cfgLogoPreview"); p.src = reader.result; p.style.display="block"; alert("Logo actualizado."); };
+  document.getElementById("btnGuardarConfig")?.addEventListener("click",()=>{ const patch={ businessName:document.getElementById("cfgNombre").value.trim(), currency:(document.getElementById("cfgMoneda").value||"USD").toUpperCase(), taxPercent:Utils.toNumber(document.getElementById("cfgIVU").value), locale:document.getElementById("cfgLocale").value.trim()||"es-PR" };
+    Store.updateSettings(patch); Numbering.setPrefix("FAC",document.getElementById("cfgPrefFAC").value); Numbering.setPrefix("COT",document.getElementById("cfgPrefCOT").value);
+    Numbering.setCounter("FAC",Utils.toNumber(document.getElementById("cfgNextFAC").value)); Numbering.setCounter("COT",Utils.toNumber(document.getElementById("cfgNextCOT").value));
+    loadBrand(); fillQuickAdd(); updateTotals(); alert("Configuración guardada."); });
+  document.getElementById("cfgLogo")?.addEventListener("change",()=>{ const file=document.getElementById("cfgLogo").files[0]; if(!file) return; const reader=new FileReader();
+    reader.onload=()=>{ Store.updateSettings({logoDataUrl:reader.result}); loadBrand(); const p=document.getElementById("cfgLogoPreview"); p.src=reader.result; p.style.display="block"; alert("Logo actualizado."); };
     reader.readAsDataURL(file);
   });
-  document.getElementById("btnQuitarLogo")?.addEventListener("click", (e) => { e.preventDefault(); Store.updateSettings({ logoDataUrl: "" }); const p = document.getElementById("cfgLogoPreview"); p.removeAttribute("src"); p.style.display="none"; loadBrand(); });
+  document.getElementById("btnQuitarLogo")?.addEventListener("click",(e)=>{ e.preventDefault(); Store.updateSettings({logoDataUrl:""}); const p=document.getElementById("cfgLogoPreview"); p.removeAttribute("src"); p.style.display="none"; loadBrand(); });
 
-  // Cambiar PIN
   document.getElementById("btnCambiarPIN")?.addEventListener("click", async () => {
     const msg = document.getElementById("cfgPinMsg");
     const curr = document.getElementById("cfgPinActual").value.trim();
@@ -725,11 +646,10 @@ const UI = (() => {
     msg.textContent = "PIN actualizado."; ["cfgPinActual","cfgPinNuevo1","cfgPinNuevo2"].forEach(id => document.getElementById(id).value = "");
   });
 
-  // Reset y logout
-  document.getElementById("btnReset")?.addEventListener("click", () => { if (!confirm("Esto borrará toda la data (config, catálogo, documentos). ¿Continuar?")) return; Store.resetAll(); Session.end(); location.reload(); });
-  document.getElementById("btnLogout")?.addEventListener("click", () => { Session.end(); location.reload(); });
+  document.getElementById("btnReset")?.addEventListener("click",()=>{ if(!confirm("Esto borrará toda la data (config, catálogo, documentos). ¿Continuar?")) return; Store.resetAll(); Session.end(); location.reload(); });
+  document.getElementById("btnLogout")?.addEventListener("click",()=>{ Session.end(); location.reload(); });
 
-  function init() { Store.ensureSeeds(); initAuth(); }
+  function init(){ Store.ensureSeeds(); initAuth(); }
   return { init };
 })();
 
@@ -738,4 +658,4 @@ function escapeHTML(s){ return String(s||"").replace(/[&<>'"]/g, c => ({'&':'&am
 function escapeAttr(s){ return escapeHTML(s).replace(/"/g,'&quot;'); }
 
 // ---------- Start ----------
-window.addEventListener("DOMContentLoaded", () => UI.init());
+window.addEventListener("DOMContentLoaded", ()=> UI.init());
