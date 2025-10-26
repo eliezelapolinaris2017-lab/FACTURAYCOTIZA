@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Oasis — Facturación & Cotizaciones</title>
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Manifest PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0b1f3a" />
+  <link rel="icon" href="icons/icon-72x72.png" type="image/png" />
+  <link rel="apple-touch-icon" href="icons/icon-192x192.png" />
+</head>
+<body class="light">
+
+  <!-- AUTH OVERLAY (PIN) -->
+  <div id="authOverlay" class="overlay" style="display:flex;">
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <h1 id="authTitle">Bienvenido</h1>
+      <p id="authSubtitle">Crea un PIN para proteger tus datos.</p>
+
+      <form id="authForm" autocomplete="off">
+        <label for="authPin" id="authLabelPIN">PIN</label>
+        <input id="authPin" name="authPin" type="password" inputmode="numeric" maxlength="6" placeholder="4–6 dígitos" required />
+
+        <label for="authPin2" id="authLabelPIN2" class="hidden">Repite el PIN</label>
+        <input id="authPin2" name="authPin2" type="password" inputmode="numeric" maxlength="6" class="hidden" />
+
+        <div style="margin-top:14px;display:flex;gap:10px;justify-content:center">
+          <button id="authBtn" class="btn primary" type="submit">Guardar PIN</button>
+        </div>
+        <p id="authMsg" class="msg" aria-live="polite"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- DRAWER MENU -->
+  <aside id="drawer" class="drawer" aria-hidden="true">
+    <div class="drawer-header">
+      <div class="drawer-brand">
+        <img id="drawerLogo" alt="Logo" style="display:none" />
+        <div>
+          <strong id="drawerName">Oasis</strong>
+          <small id="drawerTag">Facturación</small>
+        </div>
+      </div>
+      <button id="drawerClose" class="icon-btn" aria-label="Cerrar menú">×</button>
+    </div>
+
+    <nav class="drawer-nav" role="navigation" aria-label="Navegación principal">
+      <button class="drawer-item" data-tab="nuevo" aria-controls="tab-nuevo">🧾 <span>Nuevo</span></button>
+      <button class="drawer-item" data-tab="historial" aria-controls="tab-historial">📚 <span>Historial</span></button>
+      <button class="drawer-item" data-tab="catalogo" aria-controls="tab-catalogo">📦 <span>Catálogo</span></button>
+      <button class="drawer-item" data-tab="reportes" aria-controls="tab-reportes">📈 <span>Reportes</span></button>
+      <button class="drawer-item" data-tab="config" aria-controls="tab-config">⚙️ <span>Configuración</span></button>
+    </nav>
+
+    <div class="drawer-footer">
+      <small>© 2025 Oasis • Local + Firebase</small>
+    </div>
+  </aside>
+
+  <!-- TOPBAR -->
+  <header class="topbar no-print">
+    <button id="menuBtn" class="icon-btn" aria-label="Abrir menú">☰</button>
+    <div class="brand">
+      <strong id="brandName">Oasis</strong>
+      <small>Facturación y Cotizaciones</small>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main>
+    <!-- NUEVO DOCUMENTO -->
+    <section id="tab-nuevo" class="tab active" role="region" aria-labelledby="nuevoTitle">
+      <div class="panel">
+        <h2 id="nuevoTitle">Nuevo Documento</h2>
+        <form id="docForm" autocomplete="off">
+          <div class="row">
+            <div class="col">
+              <label for="docTipo">Tipo</label>
+              <select id="docTipo" name="docTipo">
+                <option value="FAC">Factura</option>
+                <option value="COT">Cotización</option>
+              </select>
+            </div>
+            <div class="col">
+              <label for="docPrefijo">Prefijo</label>
+              <input id="docPrefijo" name="docPrefijo" type="text" />
+            </div>
+            <div class="col">
+              <label for="docNumero">Número</label>
+              <input id="docNumero" name="docNumero" type="text" inputmode="numeric" />
+            </div>
+            <div class="col">
+              <label for="docFecha">Fecha</label>
+              <input id="docFecha" name="docFecha" type="date" />
+            </div>
+          </div>
+
+          <div class="stack">
+            <label for="docCliente">Cliente</label>
+            <input id="docCliente" name="docCliente" type="text" placeholder="Nombre o empresa del cliente" />
+          </div>
+
+          <div class="lines-header">
+            <h3>Artículos / Servicios</h3>
+            <div style="display:flex;gap:10px;align-items:center">
+              <select id="catalogQuickAdd" aria-label="Agregar desde catálogo"><option value="">— del catálogo —</option></select>
+              <button type="button" id="btnQuickAdd" class="btn">Agregar</button>
+              <button type="button" id="btnAddLinea" class="btn outline">+ Agregar línea</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table" aria-label="Líneas del documento">
+              <thead>
+                <tr>
+                  <th>Artículo</th>
+                  <th>Descripción</th>
+                  <th style="width:80px">Precio</th>
+                  <th style="width:80px">Cant.</th>
+                  <th style="width:100px">Importe</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="lineasBody"></tbody>
+            </table>
+          </div>
+
+          <div class="row totals" style="align-items:center">
+            <div class="col">
+              <label for="docDescuento">Descuento (%)</label>
+              <input id="docDescuento" type="number" step="0.01" />
+            </div>
+            <div class="col">
+              <label for="docImpuesto">IVU (%)</label>
+              <input id="docImpuesto" type="number" step="0.01" />
+            </div>
+            <div class="col">
+              <label for="docPago">Método de pago</label>
+              <select id="docPago">
+                <option value="">— seleccionar —</option>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Cheque">Cheque</option>
+                <option value="ATH">ATH</option>
+                <option value="ATH Móvil">ATH Móvil</option>
+                <option value="PayPal">PayPal</option>
+              </select>
+            </div>
+            <div class="col">
+              <label for="docPagoRef">Ref. Pago</label>
+              <input id="docPagoRef" type="text" />
+            </div>
+          </div>
+
+          <div class="sumas" id="sumas">
+            <div>Subtotal: <strong id="sumSubtotal">$0.00</strong></div>
+            <div>Descuento: <strong id="sumDesc">$0.00</strong></div>
+            <div>IVU: <strong id="sumImpuesto">$0.00</strong></div>
+            <div>Total: <strong id="sumTotal">$0.00</strong></div>
+          </div>
+
+          <div class="stack">
+            <label for="docNotas">Notas</label>
+            <textarea id="docNotas" rows="3" placeholder="Condiciones, observaciones, etc."></textarea>
+          </div>
+
+          <div class="row no-print" style="margin-top:12px">
+            <button type="button" id="btnGuardarBorrador" class="btn">💾 Guardar borrador</button>
+            <button type="submit" id="btnGuardarFinal" class="btn primary">🖨️ Guardar y Generar PDF</button>
+            <button type="button" id="btnDuplicar" class="btn">Duplicar</button>
+            <button type="button" id="btnAnular" class="btn warn">Anular</button>
+            <button type="button" id="btnReemitir" class="btn outline">Re-emitir número</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- HISTORIAL -->
+    <section id="tab-historial" class="tab" role="region" aria-labelledby="histTitle">
+      <div class="panel">
+        <h2 id="histTitle">Historial</h2>
+        <div class="row">
+          <input id="histSearch" type="search" placeholder="Buscar por cliente, número o pago..." />
+        </div>
+        <div class="table-wrap">
+          <table class="table" aria-label="Historial de documentos">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Número</th>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Pago</th>
+                <th>Total</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="histBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- CATÁLOGO -->
+    <section id="tab-catalogo" class="tab" role="region" aria-labelledby="catTitle">
+      <div class="panel">
+        <h2 id="catTitle">Catálogo</h2>
+        <div class="row">
+          <div class="col">
+            <input id="itemNombre" type="text" placeholder="Nombre del artículo o servicio" />
+          </div>
+          <div class="col">
+            <input id="itemPrecio" type="number" step="0.01" inputmode="decimal" placeholder="Precio" />
+          </div>
+          <div class="col">
+            <input id="itemFoto" type="file" accept="image/png,image/jpeg" />
+          </div>
+          <div style="align-self:center">
+            <button id="itemAgregar" class="btn primary">➕ Agregar</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table" aria-label="Catálogo de artículos">
+            <thead>
+              <tr>
+                <th>Imagen</th>
+                <th>Artículo</th>
+                <th>Precio</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="itemsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- REPORTES -->
+    <section id="tab-reportes" class="tab" role="region" aria-labelledby="repTitle">
+      <div class="panel">
+        <h2 id="repTitle">Reportes</h2>
+        <div class="row">
+          <div class="col">
+            <label for="repDesde">Desde</label>
+            <input id="repDesde" type="date" />
+          </div>
+          <div class="col">
+            <label for="repHasta">Hasta</label>
+            <input id="repHasta" type="date" />
+          </div>
+          <div style="align-self:flex-end">
+            <button id="btnRepRango" class="btn">Filtrar</button>
+          </div>
+        </div>
+
+        <div id="repResumen" class="resumen"></div>
+
+        <div class="table-wrap">
+          <table class="table" aria-label="Resultados del reporte">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Número</th>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Pago</th>
+                <th>Total</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="repBody"></tbody>
+          </table>
+        </div>
+
+        <div class="row no-print" style="margin-top:12px">
+          <button id="btnCSV" class="btn outline">📄 Exportar CSV</button>
+          <button id="btnPDF" class="btn primary">🖨️ Exportar PDF</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONFIGURACIÓN -->
+    <section id="tab-config" class="tab" role="region" aria-labelledby="cfgTitle">
+      <div class="panel">
+        <h2 id="cfgTitle">Configuración</h2>
+
+        <label for="cfgNombre">Nombre del negocio</label>
+        <input id="cfgNombre" type="text" placeholder="Ej. Oasis Corp" />
+
+        <label for="cfgLogo">Logo (PNG/JPG)</label>
+        <input id="cfgLogo" type="file" accept="image/png,image/jpeg" />
+        <div class="logoPreview"><img id="cfgLogoPreview" alt="Logo preview" style="display:none" /></div>
+
+        <label for="cfgIVU">IVU (%)</label>
+        <input id="cfgIVU" type="number" step="0.01" />
+
+        <label>Prefijos y consecutivos</label>
+        <div class="row">
+          <div class="col"><input id="cfgPrefFAC" placeholder="FAC-" /></div>
+          <div class="col"><input id="cfgNextFAC" type="number" placeholder="1" /></div>
+          <div class="col"><input id="cfgPrefCOT" placeholder="COT-" /></div>
+          <div class="col"><input id="cfgNextCOT" type="number" placeholder="1" /></div>
+        </div>
+
+        <label for="cfgPinActual">PIN actual</label>
+        <input id="cfgPinActual" type="password" />
+
+        <label for="cfgPinNuevo1">Nuevo PIN</label>
+        <input id="cfgPinNuevo1" type="password" />
+
+        <label for="cfgPinNuevo2">Repite nuevo PIN</label>
+        <input id="cfgPinNuevo2" type="password" />
+
+        <div style="margin-top:12px;display:flex;gap:10px">
+          <button id="btnGuardarConfig" class="btn primary">Guardar</button>
+          <button id="btnQuitarLogo" class="btn outline">Quitar logo</button>
+          <button id="btnReset" class="btn warn">🧹 Resetear todo</button>
+          <button id="btnLogout" class="btn">Cerrar sesión</button>
+        </div>
+        <p id="cfgPinMsg" class="msg"></p>
+      </div>
+    </section>
+  </main>
+
+  <!-- PWA HOME -->
+  <button id="pwaHomeBtn" class="pwa-home no-print" title="Volver al inicio">🏠 Volver al inicio</button>
+
+  <!-- Área impresión -->
+  <div id="printArea" class="print-area" style="display:none"></div>
+
+  <!-- SCRIPTS -->
+  <script type="module" src="./firebase-init.js"></script>
+  <script src="./app.js"></script>
+
+  <!-- Registrar Service Worker -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("./service-worker.js")
+          .then(reg => console.log("✅ Service Worker registrado:", reg.scope))
+          .catch(err => console.warn("⚠️ Error registrando SW:", err));
+      });
+    }
+  </script>
+</body>
+</html>
