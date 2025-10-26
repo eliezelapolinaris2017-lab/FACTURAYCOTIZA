@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nuevo Documento — Oasis</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app-core.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>🧾 Nuevo Documento</h1>
+  </header>
+
+  <main class="page">
+    <form id="formDoc" class="card">
+      <label>Tipo:
+        <select id="tipo">
+          <option value="FAC">Factura</option>
+          <option value="COT">Cotización</option>
+        </select>
+      </label>
+
+      <label>Cliente:
+        <input type="text" id="cliente" placeholder="Nombre o empresa" required>
+      </label>
+
+      <label>Fecha:
+        <input type="date" id="fecha">
+      </label>
+
+      <label>Pago:
+        <select id="pago">
+          <option value="">— Selecciona método —</option>
+          <option>ATH</option>
+          <option>Efectivo</option>
+          <option>Cheque</option>
+          <option>ATH Móvil</option>
+          <option>PayPal</option>
+        </select>
+      </label>
+
+      <div id="lineas"></div>
+      <button type="button" id="agregarLinea" class="btn">➕ Añadir línea</button>
+
+      <label>Descuento (%):
+        <input type="number" id="desc" step="0.01" value="0">
+      </label>
+
+      <label>Impuesto (%):
+        <input type="number" id="iva" step="0.01" value="11.5">
+      </label>
+
+      <label>Notas:
+        <textarea id="notas" rows="3"></textarea>
+      </label>
+
+      <button type="submit" class="btn">💾 Guardar y Exportar</button>
+    </form>
+
+    <a href="./index.html" class="btn btn-dark">🏠 Volver al inicio</a>
+  </main>
+
+  <script type="module">
+    import { Store, Docs, Printer } from './app-core.js';
+    const form = document.getElementById('formDoc');
+    const lineasDiv = document.getElementById('lineas');
+
+    function agregarLinea(nombre='', precio=0, qty=1){
+      const wrap = document.createElement('div');
+      wrap.className = 'linea';
+      wrap.innerHTML = `
+        <input type="text" placeholder="Descripción" value="${nombre}">
+        <input type="number" step="0.01" placeholder="Precio" value="${precio}">
+        <input type="number" step="1" placeholder="Cant." value="${qty}">
+        <button type="button" class="btn-min eliminar">✖</button>
+      `;
+      wrap.querySelector('.eliminar').onclick = () => wrap.remove();
+      lineasDiv.appendChild(wrap);
+    }
+
+    document.getElementById('agregarLinea').onclick = () => agregarLinea();
+
+    form.onsubmit = e => {
+      e.preventDefault();
+      const doc = Docs.empty(document.getElementById('tipo').value);
+      doc.client = document.getElementById('cliente').value;
+      doc.date = document.getElementById('fecha').value;
+      doc.discountPct = parseFloat(document.getElementById('desc').value) || 0;
+      doc.taxPct = parseFloat(document.getElementById('iva').value) || 0;
+      doc.paymentMethod = document.getElementById('pago').value;
+      doc.notes = document.getElementById('notas').value;
+      doc.lines = [...lineasDiv.children].map(l => ({
+        name: l.children[0].value,
+        price: parseFloat(l.children[1].value) || 0,
+        qty: parseFloat(l.children[2].value) || 1
+      }));
+      Store.saveDoc(doc);
+      Printer.open(Printer.docHTML(doc));
+      alert('✅ Documento guardado correctamente');
+      location.href = './historial.html';
+    };
+
+    agregarLinea();
+  </script>
+</body>
+</html>
