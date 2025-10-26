@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Oasis — Historial</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<header class="topbar"><div class="icon">📚</div><div class="brand"><strong>Oasis</strong><small>Historial</small></div></header>
+<nav class="nav">
+  <a href="./index.html">🧾 Nuevo</a><a href="./historial.html" class="active">📚 Historial</a><a href="./catalogo.html">📦 Catálogo</a><a href="./reportes.html">📈 Reportes</a><a href="./config.html">⚙️ Config</a>
+</nav>
+<main>
+  <section class="panel">
+    <h2>Historial</h2>
+    <input id="q" type="search" placeholder="Buscar por cliente, número o pago..." />
+    <table class="table">
+      <thead><tr><th>Tipo</th><th>Número</th><th>Fecha</th><th>Cliente</th><th>Pago</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </section>
+</main>
+
+<div id="loginModal" class="overlay" style="display:none"><div class="card"><h2>Accede con Google</h2><p id="loginStatus">Inicia sesión para continuar.</p><button id="btnLoginGoogle" class="btn primary">🔑 Iniciar con Google</button></div></div>
+
+<script type="module">
+  import {Firebase, Sync, requireGoogleSignIn, Store, Docs, Printer, U} from './app-core.js';
+  await Sync.start(); await requireGoogleSignIn();
+
+  const s=Store.settings(), tbody=U.byId('tbody');
+  function render(){
+    const q=(U.byId('q').value||"").toLowerCase().trim();
+    const list=(Store.docs()).filter(d=>{
+      const num=`${d.prefix||""}${d.number}`.toLowerCase();
+      return !q || (d.client||"").toLowerCase().includes(q) || num.includes(q) || (d.paymentMethod||"").toLowerCase().includes(q);
+    });
+    tbody.innerHTML = list.map(d=>`<tr>
+      <td>${d.type}</td><td>${d.prefix||""}${d.number}</td><td>${U.fmtDate(d.date,s.locale)}</td>
+      <td>${d.client||""}</td><td>${d.paymentMethod||"-"}</td>
+      <td class="right">${U.fmtMoney(Docs.calc(d).total,s.currency,s.locale)}</td>
+      <td>${d.status}</td>
+      <td><button class="btn" data-id="${d.id}" data-act="pdf">PDF</button></td>
+    </tr>`).join("");
+  }
+  render();
+  U.byId('q').oninput=render;
+  tbody.onclick=(e)=>{ const b=e.target.closest('button[data-id]'); if(!b) return;
+    const d=Store.docs().find(x=>x.id===b.dataset.id); if(b.dataset.act==="pdf") Printer.open(Printer.docHTML(d));
+  };
+
+  document.addEventListener("oasis-remote-update", render);
+</script>
+<script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"));}</script>
+</body>
+</html>
