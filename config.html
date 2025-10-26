@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Oasis — Configuración</title>
+<link rel="stylesheet" href="styles.css"/></head>
+<body>
+<header class="topbar no-print"><div class="brand"><strong id="brandName">Oasis</strong><small>Configuración</small></div></header>
+<nav class="drawer-nav no-print" style="padding:10px;display:flex;gap:8px;flex-wrap:wrap">
+  <a class="btn outline" href="./index.html">🧾 Nuevo</a>
+  <a class="btn outline" href="./historial.html">📚 Historial</a>
+  <a class="btn outline" href="./catalogo.html">📦 Catálogo</a>
+  <a class="btn outline" href="./reportes.html">📈 Reportes</a>
+  <a class="btn outline" href="./config.html">⚙️ Config</a>
+</nav>
+<main>
+<section class="panel">
+  <h2>Configuración</h2>
+  <label>Nombre del negocio</label><input id="cfgNombre"/>
+  <label>Logo (PNG/JPG)</label><input id="cfgLogo" type="file" accept="image/*"/>
+  <div class="logoPreview"><img id="cfgLogoPreview" style="display:none" alt="Logo"/></div>
+  <label>IVU (%)</label><input id="cfgIVU" type="number" step="0.01"/>
+  <label>Prefijos y consecutivos</label>
+  <div class="row">
+    <div class="col"><input id="cfgPrefFAC" placeholder="FAC-"/></div>
+    <div class="col"><input id="cfgNextFAC" type="number"/></div>
+    <div class="col"><input id="cfgPrefCOT" placeholder="COT-"/></div>
+    <div class="col"><input id="cfgNextCOT" type="number"/></div>
+  </div>
+  <label>PIN</label>
+  <input id="cfgPinActual" type="password" placeholder="Actual"/>
+  <input id="cfgPinNuevo1" type="password" placeholder="Nuevo"/>
+  <input id="cfgPinNuevo2" type="password" placeholder="Repite nuevo"/>
+  <div style="margin-top:12px;display:flex;gap:10px">
+    <button id="btnGuardarConfig" class="btn primary">Guardar</button>
+    <button id="btnQuitarLogo" class="btn outline">Quitar logo</button>
+    <button id="btnReset" class="btn warn">🧹 Resetear todo</button>
+    <button id="btnLogout" class="btn">Cerrar sesión</button>
+  </div>
+  <p id="cfgMsg" class="msg"></p>
+</section>
+</main>
+
+<!-- Overlay PIN -->
+<div id="authOverlay" class="overlay" style="display:flex">
+  <div class="card"><h1 id="authTitle">Bienvenido</h1><p id="authSubtitle"></p>
+    <form id="authForm"><label>PIN</label><input id="authPin" type="password" inputmode="numeric" maxlength="6"/>
+      <label id="authLabelPIN2" class="hidden">Repite el PIN</label><input id="authPin2" type="password" inputmode="numeric" maxlength="6" class="hidden"/>
+      <button id="authBtn" class="btn primary" type="submit">Entrar</button><p id="authMsg" class="msg"></p></form>
+  </div>
+</div>
+
+<script type="module" src="./firebase-init.js"></script>
+<script type="module">
+  import {Utils, Store, Numbering, requirePIN, initShell, Session} from './app-core.js';
+  await requirePIN(); initShell("config.html");
+
+  function load(){
+    const s=Store.get("settings");
+    cfgNombre.value=s.businessName||""; cfgIVU.value=s.taxPercent??11.5;
+    cfgPrefFAC.value=s.prefixes.FAC||"FAC-"; cfgNextFAC.value=s.counters.FAC||1;
+    cfgPrefCOT.value=s.prefixes.COT||"COT-"; cfgNextCOT.value=s.counters.COT||1;
+    if(s.logoDataUrl){ cfgLogoPreview.src=s.logoDataUrl; cfgLogoPreview.style.display="block"; }
+  }
+  load();
+
+  cfgLogo.onchange = async ()=>{ const f=cfgLogo.files[0]; if(!f) return; const data=await (await import('./app-core.js')).Utils.fileToDataURL(f); Store.updateSettings({logoDataUrl:data}); cfgLogoPreview.src=data; cfgLogoPreview.style.display="block"; };
+  btnQuitarLogo.onclick = ()=>{ Store.updateSettings({logoDataUrl:""}); cfgLogoPreview.style.display="none"; };
+
+  btnGuardarConfig.onclick = async ()=>{
+    Store.updateSettings({ businessName: cfgNombre.value.trim(), taxPercent: Number(cfgIVU.value||0) });
+    Numbering.setPrefix("FAC", cfgPrefFAC.value.trim()||"FAC-");
+    Numbering.setPrefix("COT", cfgPrefCOT.value.trim()||"COT-");
+    Numbering.setCounter("FAC", Number(cfgNextFAC.value||1));
+    Numbering.setCounter("COT", Number(cfgNextCOT.value||1));
+    cfgMsg.textContent="Configuración guardada.";
+  };
+
+  btnReset.onclick = ()=>{ if(!confirm("Borrará toda la data local.")) return; Store.reset(); Session.end(); location.href="./index.html"; };
+  btnLogout.onclick = ()=>{ Session.end(); location.reload(); };
+</script>
+<script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"));}</script>
+</body></html>
