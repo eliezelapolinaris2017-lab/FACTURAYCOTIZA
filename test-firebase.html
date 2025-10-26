@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Prueba Firebase</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
+    const config = {
+      apiKey: "AlzaSyBM6gQ-BbqngwFF8rfLLVQnhQw-YSYHLAI",
+      authDomain: "facturas-web-794ae.firebaseapp.com",
+      projectId: "facturas-web-794ae",
+      storageBucket: "facturas-web-794ae.appspot.com",
+      messagingSenderId: "412530106595",
+      appId: "1:412530106595:web:416fe7dfc53740ce9a25d6"
+    };
+    const app = initializeApp(config);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    console.log("✅ Firebase conectado correctamente:", app.name, auth ? "Auth OK" : "Auth fail");
+  </script>
+</head>
+<body>
+  <h1>Verifica en la consola (F12) si aparece “Firebase conectado correctamente”</h1>
+</body>
+</html>
