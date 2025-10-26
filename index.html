@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oasis — Facturación y Cotizaciones</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b1f3a'/%3E%3Ctext x='32' y='42' font-size='36' text-anchor='middle' fill='%23d4af37'%3EO%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./styles.css" />
+
+  <!-- Núcleo con Firebase (ya configurado a facturas-web-794ae) -->
+  <script type="module" src="./app-core.js"></script>
+
+  <style>
+    /* Asegura que el modal sea visible aunque falte CSS global */
+    #authModal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:1000}
+    #authModal .modal-card{background:#fff;border:2px solid #000;border-radius:16px;max-width:420px;width:90%;padding:22px;text-align:center}
+    #authModal .modal-card h2{margin:.25rem 0 .5rem}
+    #authModal .modal-card p{margin:0 0 1rem;color:#5b6b86}
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>🧾 Oasis</h1>
+    <p>Facturación y Cotizaciones</p>
+  </header>
+
+  <main class="home-menu">
+    <a class="btn btn-lg" href="./nuevo.html">🧾 Nuevo Documento</a>
+    <a class="btn btn-lg" href="./historial.html">📚 Historial</a>
+    <a class="btn btn-lg" href="./catalogo.html">📦 Catálogo</a>
+    <a class="btn btn-lg" href="./reportes.html">📈 Reportes</a>
+    <a class="btn btn-lg btn-dark" href="./config.html">⚙️ Configuración</a>
+
+    <!-- Estado de sesión y acciones -->
+    <div style="margin-top:14px">
+      <span id="authStatus" class="badge">Sin sesión</span>
+      <button id="btnOpenLogin" class="btn ghost" style="margin-left:.5rem">🔐 Iniciar sesión</button>
+      <button id="btnLogout" class="btn danger" style="margin-left:.5rem; display:none">🔓 Cerrar sesión</button>
+    </div>
+  </main>
+
+  <footer>© 2025 Oasis — Desarrollado con Firebase</footer>
+
+  <!-- Modal de login -->
+  <section id="authModal">
+    <div class="modal-card">
+      <h2>Inicia sesión</h2>
+      <p>Autentícate con Google para sincronizar tus datos en la nube (Firestore).</p>
+      <button id="btnGoogleSignIn" class="btn primary">🔑 Continuar con Google</button>
+      <button id="btnUseOffline" class="btn ghost" style="margin-top:.5rem">⏳ Seguir sin sincronizar</button>
+    </div>
+  </section>
+
+  <!-- Lógica de autenticación en la portada -->
+  <script type="module">
+    import { Firebase, requireGoogleSignIn } from './app-core.js';
+
+    // 1) Mostrar el modal automáticamente si no hay sesión al cargar
+    async function ensureLoginOnLoad() {
+      const u = Firebase.auth.currentUser;
+      if (!u) {
+        // abre modal y espera login o “seguir sin sincronizar”
+        await requireGoogleSignIn();
+      }
+    }
+
+    // 2) UI: estado + botones de abrir modal y logout
+    function wireAuthUI() {
+      const $status = document.getElementById('authStatus');
+      const $open   = document.getElementById('btnOpenLogin');
+      const $logout = document.getElementById('btnLogout');
+
+      Firebase.onAuthStateChanged(Firebase.auth, (user) => {
+        if (user) {
+          $status.textContent = 'Sesión: ' + (user.displayName || user.email || user.uid);
+          $status.className = 'badge ok';
+          $logout.style.display = '';
+          $open.style.display   = 'none';
+          console.log('✅ Usuario autenticado:', user.uid);
+        } else {
+          $status.textContent = 'Sin sesión';
+          $status.className = 'badge';
+          $logout.style.display = 'none';
+          $open.style.display   = '';
+          console.log('ℹ️ Modo sin sesión');
+        }
+      });
+
+      $open.addEventListener('click', () => requireGoogleSignIn());
+      $logout.addEventListener('click', () => Firebase.signOut());
+    }
+
+    // 3) PWA SW
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js').catch(console.warn);
+    }
+
+    // Arranque
+    wireAuthUI();
+    ensureLoginOnLoad();
+  </script>
+</body>
+</html>
