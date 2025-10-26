@@ -1,6 +1,6 @@
 /* ==========================================================
 Oasis — Núcleo compartido (vanilla JS)
-Proyecto: facturas-web
+Proyecto: facturas-web-794ae
 ========================================================== */
 
 // Import Firebase SDKs (usando módulos ES)
@@ -9,16 +9,15 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signO
 import { getFirestore, collection, doc, setDoc, getDocs, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
 /* ----------------------------------------------------------
-🔐 Configuración Firebase para el proyecto facturas-web
-⚠️ Revisa que coincida con tu panel en Firebase Console
+🔐 Configuración Firebase para el proyecto facturas-web-794ae
 ----------------------------------------------------------- */
 const firebaseConfig = {
-apiKey: "TU_API_KEY_AQUI",
-authDomain: "facturas-web.firebaseapp.com",
-projectId: "facturas-web",
-storageBucket: "facturas-web.appspot.com",
-messagingSenderId: "TU_SENDER_ID",
-appId: "TU_APP_ID"
+apiKey: "AlzaSyBM6gQ-BbqngwFF8rfLLVQnhQw-YSYHLAI",
+authDomain: "facturas-web-794ae.firebaseapp.com",
+projectId: "facturas-web-794ae",
+storageBucket: "facturas-web-794ae.appspot.com",
+messagingSenderId: "412530106595",
+appId: "1:412530106595:web:e141295bffb1592500b442" // <-- confirma este valor en tu panel
 };
 
 /* ----------------------------------------------------------
@@ -142,63 +141,6 @@ x.number = Numbering.next(newType);
 x.status = "borrador";
 x.date = U.todayISO();
 return x;
-}
-};
-
-/* ----------------------------------------------------------
-🖨️ Printer (PDF con window.print)
------------------------------------------------------------ */
-export const Printer = {
-docHTML(d) {
-const s = Store.settings(), t = Docs.calc(d), num = `${d.prefix || ""}${d.number}`, title = d.type === "FAC" ? "Factura" : "Cotización";
-const rows = (d.lines || []).map(l => `
-<tr>
-<td>${l.name || ""}</td>
-<td>${l.desc || ""}</td>
-<td style="text-align:right">${U.fmtMoney(l.price, s.currency, s.locale)}</td>
-<td style="text-align:right">${l.qty || 1}</td>
-<td style="text-align:right">${U.fmtMoney((l.price || 0) * (l.qty || 1), s.currency, s.locale)}</td>
-</tr>`).join("");
-
-return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${title} ${num}</title>
-<style>
-body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:0;padding:12mm;}
-h1{margin:0 0 8px;}
-table{width:100%;border-collapse:collapse;}
-th,td{border:1px solid #000;padding:6px;}
-.meta{font-size:12px;}
-.head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
-.logo{width:90px;height:90px;object-fit:contain;border:1px solid #000;border-radius:8px;}
-@page{margin:12mm;}
-</style></head><body>
-<div class="head">
-<div>
-<h1>${title}</h1>
-<div class="meta">
-Número: ${num}<br>Fecha: ${U.fmtDate(d.date, s.locale)}<br>
-Cliente: ${d.client || ""}<br>
-${d.paymentMethod ? `Pago: ${d.paymentMethod}${d.paymentRef ? ` — Ref: ${d.paymentRef}` : ""}` : ""}
-</div>
-</div>
-<div style="text-align:right">
-${s.logoDataUrl ? `<img class="logo" src="${s.logoDataUrl}" alt="logo">` : ""}
-<div style="margin-top:6px;font-weight:800">${s.businessName || "Oasis"}</div>
-</div>
-</div>
-<table><thead><tr><th>Ítem</th><th>Detalle</th><th>Precio</th><th>Cant.</th><th>Importe</th></tr></thead><tbody>${rows}</tbody></table>
-<div style="display:flex;justify-content:flex-end;margin-top:10px"><table>
-<tr><td>Subtotal</td><td style="text-align:right">${U.fmtMoney(t.subtotal, s.currency, s.locale)}</td></tr>
-<tr><td>Descuento (${d.discountPct || 0}%)</td><td style="text-align:right">${U.fmtMoney(t.descAmt, s.currency, s.locale)}</td></tr>
-<tr><td>IVU (${d.taxPct || 0}%)</td><td style="text-align:right">${U.fmtMoney(t.taxAmt, s.currency, s.locale)}</td></tr>
-<tr><td><strong>Total</strong></td><td style="text-align:right"><strong>${U.fmtMoney(t.total, s.currency, s.locale)}</strong></td></tr>
-</table></div>
-${d.notes ? `<div style="margin-top:10px;white-space:pre-wrap"><strong>Notas:</strong><br>${d.notes}</div>` : ""}
-<script>onload=()=>print()</script></body></html>`;
-},
-open(html) {
-const w = open("", "_blank");
-w.document.write(html);
-w.document.close();
 }
 };
 
