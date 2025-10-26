@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oasis — Facturación y Cotizaciones</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app-core.js"></script>
+</head>
+<body>
+  <header>
+    <h1>📄 Oasis</h1>
+    <p>Facturación y Cotizaciones</p>
+  </header>
+
+  <main>
+    <button id="btnNuevo">🧾 Nuevo Documento</button>
+    <button id="btnHistorial">📚 Historial</button>
+    <button id="btnCatalogo">📦 Catálogo</button>
+    <button id="btnReportes">📈 Reportes</button>
+    <button id="btnConfig">⚙️ Configuración</button>
+  </main>
+
+  <!-- Modal de Login -->
+  <div id="authModal" class="modal">
+    <div class="modal-content">
+      <h2>Inicia sesión para sincronizar tus datos</h2>
+      <button id="btnGoogleSignIn">🔑 Iniciar sesión con Google</button>
+      <button id="btnUseOffline">⏳ Usar sin conexión</button>
+    </div>
+  </div>
+
+  <footer>
+    <p>© 2025 Oasis — Desarrollado con Firebase</p>
+  </footer>
+
+  <script type="module">
+    import { Firebase, requireGoogleSignIn, Store, Sync } from './app-core.js';
+    Store.ensure();
+
+    requireGoogleSignIn().then(user => {
+      if (user) {
+        console.log("✅ Usuario autenticado:", user.uid);
+        Sync.start();
+      } else {
+        console.log("Modo offline activado");
+      }
+    });
+  </script>
+</body>
+</html>
