@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Oasis — Historial</title>
+<link rel="stylesheet" href="styles.css"/></head>
+<body>
+<header class="topbar no-print"><div class="brand"><strong id="brandName">Oasis</strong><small>Historial</small></div></header>
+<nav class="drawer-nav no-print" style="padding:10px;display:flex;gap:8px;flex-wrap:wrap">
+  <a class="btn outline" href="./index.html">🧾 Nuevo</a>
+  <a class="btn outline" href="./historial.html">📚 Historial</a>
+  <a class="btn outline" href="./catalogo.html">📦 Catálogo</a>
+  <a class="btn outline" href="./reportes.html">📈 Reportes</a>
+  <a class="btn outline" href="./config.html">⚙️ Config</a>
+</nav>
+<main>
+<section class="panel">
+  <h2>Historial</h2>
+  <input id="histSearch" type="search" placeholder="Buscar por cliente, número o pago..."/>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Tipo</th><th>Número</th><th>Fecha</th><th>Cliente</th><th>Pago</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+    <tbody id="histBody"></tbody>
+  </table></div>
+</section>
+</main>
+
+<!-- Overlay PIN -->
+<div id="authOverlay" class="overlay" style="display:flex">
+  <div class="card"><h1 id="authTitle">Bienvenido</h1><p id="authSubtitle"></p>
+    <form id="authForm"><label>PIN</label><input id="authPin" type="password" inputmode="numeric" maxlength="6"/>
+      <label id="authLabelPIN2" class="hidden">Repite el PIN</label><input id="authPin2" type="password" inputmode="numeric" maxlength="6" class="hidden"/>
+      <button id="authBtn" class="btn primary" type="submit">Entrar</button><p id="authMsg" class="msg"></p></form>
+  </div>
+</div>
+
+<script type="module" src="./firebase-init.js"></script>
+<script type="module">
+  import {Utils, Store, Docs, Printer, requirePIN, initShell} from './app-core.js';
+  await requirePIN(); initShell("historial.html");
+
+  const s=Store.get("settings");
+  function render(q=""){
+    const tbody=document.getElementById("histBody");
+    const docs=Store.getDocs().filter(d=>{
+      if(!q) return true; const num=`${d.prefix||""}${d.number}`.toLowerCase();
+      return (d.client||"").toLowerCase().includes(q) || num.includes(q) || (d.paymentMethod||"").toLowerCase().includes(q);
+    });
+    tbody.innerHTML=docs.map(d=>{
+      const t=Docs.calc(d).total;
+      return `<tr><td>${d.type}</td><td>${d.prefix||""}${d.number}</td><td>${Utils.fmtDate(d.date,s.locale)}</td>
+      <td>${d.client||""}</td><td>${d.paymentMethod||"-"}</td><td class="right">${Utils.fmtMoney(t,s.currency,s.locale)}</td>
+      <td>${d.status}</td><td><a class="btn" href="./index.html#open:${d.id}">Abrir</a><button class="btn" data-id="${d.id}">PDF</button></td></tr>`;
+    }).join("");
+    tbody.querySelectorAll("button[data-id]").forEach(b=>b.onclick=()=>{ const d=Store.getDocs().find(x=>x.id===b.dataset.id); Printer.openPrint(Printer.docHTML(d)); });
+  }
+  render();
+  document.getElementById("histSearch").addEventListener("input",(e)=>render((e.target.value||"").toLowerCase().trim()));
+</script>
+<script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"));}</script>
+</body></html>
