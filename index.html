@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Oasis — Facturación & Cotizaciones</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="manifest" href="manifest.json" />
+</head>
+
+<body class="light">
+  <!-- LOGIN / PIN -->
+  <div id="authOverlay" class="overlay">
+    <div class="card">
+      <h1 id="authTitle">Bienvenido</h1>
+      <p id="authSubtitle">Crea un PIN para proteger tus datos.</p>
+      <form id="authForm">
+        <label for="authPin">PIN</label>
+        <input id="authPin" type="password" inputmode="numeric" maxlength="6" required placeholder="4–6 dígitos" />
+        <label for="authPin2" id="authLabelPIN2" class="hidden">Repite el PIN</label>
+        <input id="authPin2" type="password" inputmode="numeric" maxlength="6" class="hidden" />
+        <button type="submit" id="authBtn" class="btn primary">Guardar PIN</button>
+        <p id="authMsg" class="msg"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- MENÚ LATERAL -->
+  <aside id="drawer" class="drawer">
+    <div class="drawer-header">
+      <div class="drawer-brand">
+        <img id="drawerLogo" alt="Logo" />
+        <div>
+          <strong id="drawerName">Oasis</strong>
+          <small id="drawerTag">Facturación</small>
+        </div>
+      </div>
+      <button id="drawerClose" class="icon-btn">×</button>
+    </div>
+    <nav class="drawer-nav">
+      <button class="drawer-item" data-tab="nuevo">
+        🧾 <span>Nuevo</span>
+      </button>
+      <button class="drawer-item" data-tab="historial">
+        📚 <span>Historial</span>
+      </button>
+      <button class="drawer-item" data-tab="catalogo">
+        📦 <span>Catálogo</span>
+      </button>
+      <button class="drawer-item" data-tab="reportes">
+        📈 <span>Reportes</span>
+      </button>
+      <button class="drawer-item" data-tab="config">
+        ⚙️ <span>Configuración</span>
+      </button>
+    </nav>
+    <div class="drawer-footer">
+      <small>© 2025 Oasis • Local + Firebase</small>
+    </div>
+  </aside>
+
+  <!-- ENCABEZADO -->
+  <header class="topbar no-print">
+    <button id="menuBtn" class="icon-btn">☰</button>
+    <div class="brand">
+      <strong id="brandName">Oasis</strong>
+      <small>Facturación y Cotizaciones</small>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main>
+    <!-- NUEVO DOCUMENTO -->
+    <section id="tab-nuevo" class="tab active">
+      <div class="panel">
+        <h2>Nuevo Documento</h2>
+        <form id="docForm" autocomplete="off">
+          <div class="row">
+            <div class="col">
+              <label>Tipo</label>
+              <select id="docType">
+                <option value="FAC">Factura</option>
+                <option value="COT">Cotización</option>
+              </select>
+            </div>
+            <div class="col">
+              <label>Número</label>
+              <input id="docNumber" type="text" readonly />
+            </div>
+            <div class="col">
+              <label>Fecha</label>
+              <input id="docDate" type="date" />
+            </div>
+          </div>
+
+          <div class="stack">
+            <label>Cliente</label>
+            <input id="docClient" type="text" placeholder="Nombre o empresa del cliente" />
+          </div>
+
+          <div class="lines-header">
+            <h3>Artículos / Servicios</h3>
+            <button type="button" id="addLine" class="btn outline">+ Agregar</button>
+          </div>
+          <div class="table-wrap">
+            <table id="linesTable" class="table">
+              <thead>
+                <tr>
+                  <th>Artículo</th>
+                  <th>Descripción</th>
+                  <th>Cant.</th>
+                  <th>Precio</th>
+                  <th>Total</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="linesBody"></tbody>
+            </table>
+          </div>
+
+          <div class="row totals">
+            <div class="col">
+              <label>Descuento (%)</label>
+              <input id="discount" type="number" step="0.01" />
+            </div>
+            <div class="col">
+              <label>IVU (%)</label>
+              <input id="tax" type="number" step="0.01" />
+            </div>
+            <div class="col">
+              <label>Método de pago</label>
+              <select id="paymentMethod">
+                <option value="Efectivo">Efectivo</option>
+                <option value="Cheque">Cheque</option>
+                <option value="ATH">ATH</option>
+                <option value="ATH Móvil">ATH Móvil</option>
+                <option value="PayPal">PayPal</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="sumas" id="sumas"></div>
+
+          <div class="stack">
+            <label>Notas</label>
+            <textarea id="notes" placeholder="Condiciones, observaciones, etc."></textarea>
+          </div>
+
+          <div class="row no-print">
+            <button type="button" id="saveDoc" class="btn primary">💾 Guardar</button>
+            <button type="button" id="printDoc" class="btn outline">🖨️ PDF</button>
+            <button type="button" id="newDoc" class="btn">🆕 Nuevo</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- HISTORIAL -->
+    <section id="tab-historial" class="tab">
+      <div class="panel">
+        <h2>Historial</h2>
+        <input id="searchHist" type="search" placeholder="Buscar por cliente, número o pago..." />
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Número</th>
+              <th>Fecha</th>
+              <th>Cliente</th>
+              <th>Pago</th>
+              <th>Total</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- CATÁLOGO -->
+    <section id="tab-catalogo" class="tab">
+      <div class="panel">
+        <h2>Catálogo</h2>
+        <div class="row">
+          <div class="col">
+            <input id="itemName" type="text" placeholder="Nombre del artículo o servicio" />
+          </div>
+          <div class="col">
+            <input id="itemPrice" type="number" placeholder="Precio" />
+          </div>
+          <div class="col">
+            <input id="itemImage" type="file" accept="image/*" />
+          </div>
+          <button id="addItem" class="btn primary">➕ Agregar</button>
+        </div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Imagen</th>
+              <th>Artículo</th>
+              <th>Precio</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="catalogBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- REPORTES -->
+    <section id="tab-reportes" class="tab">
+      <div class="panel">
+        <h2>Reportes</h2>
+        <div class="row">
+          <div class="col">
+            <label>Desde</label>
+            <input id="repDesde" type="date" />
+          </div>
+          <div class="col">
+            <label>Hasta</label>
+            <input id="repHasta" type="date" />
+          </div>
+          <div class="col">
+            <button id="btnFiltrar" class="btn">Filtrar</button>
+          </div>
+        </div>
+        <div id="repResumen" class="resumen"></div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Número</th>
+              <th>Fecha</th>
+              <th>Cliente</th>
+              <th>Pago</th>
+              <th>Total</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="repBody"></tbody>
+        </table>
+        <div class="row">
+          <button id="exportCSV" class="btn outline">📄 Exportar CSV</button>
+          <button id="exportPDF" class="btn primary">🖨️ PDF Reporte</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONFIGURACIÓN -->
+    <section id="tab-config" class="tab">
+      <div class="panel">
+        <h2>Configuración</h2>
+        <label>Nombre del negocio</label>
+        <input id="bizName" type="text" placeholder="Ej. Oasis Corp" />
+        <label>Logo (PNG/JPG)</label>
+        <input id="bizLogo" type="file" accept="image/*" />
+        <label>IVU (%)</label>
+        <input id="bizTax" type="number" step="0.01" />
+        <label>Prefijos</label>
+        <div class="row">
+          <div class="col">
+            <input id="prefFAC" type="text" placeholder="FAC-" />
+          </div>
+          <div class="col">
+            <input id="prefCOT" type="text" placeholder="COT-" />
+          </div>
+        </div>
+        <label>PIN</label>
+        <input id="changePIN" type="password" placeholder="Nuevo PIN" />
+        <button id="btnReset" class="btn warn">🧹 Resetear todo</button>
+      </div>
+    </section>
+  </main>
+
+  <button id="btnHome" class="pwa-home no-print">🏠 Volver al inicio</button>
+
+  <div id="printArea" class="print-area"></div>
+
+  <!-- Firebase + App -->
+  <script type="module" src="./firebase-init.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
