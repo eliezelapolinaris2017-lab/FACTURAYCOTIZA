@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reportes — Oasis</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app-core.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>📈 Reportes</h1>
+  </header>
+
+  <main class="page">
+    <div class="card">
+      <label>Desde: <input type="date" id="desde"></label>
+      <label>Hasta: <input type="date" id="hasta"></label>
+      <button id="filtrar" class="btn">Filtrar</button>
+      <div id="reporte"></div>
+    </div>
+    <a href="./index.html" class="btn btn-dark">🏠 Volver al inicio</a>
+  </main>
+
+  <script type="module">
+    import { Store, U } from './app-core.js';
+    const out = document.getElementById('reporte');
+    document.getElementById('filtrar').onclick = () => {
+      const d1 = new Date(document.getElementById('desde').value);
+      const d2 = new Date(document.getElementById('hasta').value);
+      const docs = Store.docs().filter(x => {
+        const dx = new Date(x.date);
+        return dx >= d1 && dx <= d2;
+      });
+      if (!docs.length) { out.innerHTML = '<p>Sin resultados.</p>'; return; }
+      const total = docs.reduce((s,x)=>s+(x.total||0),0);
+      out.innerHTML = `<p>${docs.length} documentos — Total: <b>${U.fmtMoney(total)}</b></p>`;
+    };
+  </script>
+</body>
+</html>
