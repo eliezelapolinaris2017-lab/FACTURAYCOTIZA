@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuración — Oasis</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app-core.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>⚙️ Configuración</h1>
+  </header>
+
+  <main class="page">
+    <form id="formConfig" class="card">
+      <label>Nombre del negocio:
+        <input id="negocio" required>
+      </label>
+
+      <label>IVU (%):
+        <input id="ivu" type="number" step="0.01">
+      </label>
+
+      <label>Logo:
+        <input type="file" id="logo" accept="image/*">
+      </label>
+
+      <button class="btn">Guardar</button>
+    </form>
+    <a href="./index.html" class="btn btn-dark">🏠 Volver al inicio</a>
+  </main>
+
+  <script type="module">
+    import { Store, U } from './app-core.js';
+    const form = document.getElementById('formConfig');
+    const s = Store.settings();
+
+    form.negocio.value = s.businessName || '';
+    form.ivu.value = s.taxPercent || 0;
+
+    form.onsubmit = e => {
+      e.preventDefault();
+      Store.setSettings({
+        businessName: form.negocio.value,
+        taxPercent: parseFloat(form.ivu.value)
+      });
+      alert('Configuración guardada ✅');
+    };
+
+    document.getElementById('logo').onchange = async e => {
+      const f = e.target.files[0];
+      if (f) {
+        const dataUrl = await U.fileToDataURL(f);
+        Store.setSettings({ logoDataUrl: dataUrl });
+        alert('Logo actualizado ✅');
+      }
+    };
+  </script>
+</body>
+</html>
