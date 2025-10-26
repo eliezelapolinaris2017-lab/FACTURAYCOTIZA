@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Oasis — Config</title><link rel="stylesheet" href="styles.css"/></head>
+<body>
+<header class="topbar"><div class="icon">⚙️</div><div class="brand"><strong>Oasis</strong><small>Configuración</small></div></header>
+<nav class="nav"><a href="./index.html">🧾 Nuevo</a><a href="./historial.html">📚 Historial</a><a href="./catalogo.html">📦 Catálogo</a><a href="./reportes.html">📈 Reportes</a><a href="./config.html" class="active">⚙️ Config</a></nav>
+<main>
+<section class="panel">
+  <h2>Negocio</h2>
+  <label>Nombre del negocio</label><input id="bizName"/>
+  <label>Logo (PNG/JPG)</label><input id="bizLogo" type="file" accept="image/*"/>
+  <div style="margin:6px 0"><img id="bizLogoPrev" style="max-width:160px;border:1px solid #000;border-radius:8px;display:none"/></div>
+  <label>IVU (%)</label><input id="bizTax" type="number" step="0.01"/>
+
+  <h3>Numeración</h3>
+  <div class="row">
+    <div class="col"><label>Prefijo FAC</label><input id="prefFAC" placeholder="FAC-"/></div>
+    <div class="col"><label>Consecutivo FAC</label><input id="nextFAC" type="number"/></div>
+    <div class="col"><label>Prefijo COT</label><input id="prefCOT" placeholder="COT-"/></div>
+    <div class="col"><label>Consecutivo COT</label><input id="nextCOT" type="number"/></div>
+  </div>
+
+  <h3>Cuenta</h3>
+  <div class="row">
+    <div class="col"><div id="authStatus" style="font-weight:800;color:#0b1f3a">Sesión: —</div></div>
+    <div class="col" style="display:flex;gap:8px;align-items:center">
+      <button id="btnLoginGoogle" class="btn outline">🔑 Iniciar con Google</button>
+      <button id="btnLogout" class="btn">🚪 Cerrar sesión</button>
+      <button id="btnPush" class="btn primary">☁️ Subir</button>
+      <button id="btnPull" class="btn outline">⬇️ Bajar</button>
+    </div>
+  </div>
+
+  <div style="margin-top:12px;display:flex;gap:10px">
+    <button id="save" class="btn primary">Guardar</button>
+    <button id="reset" class="btn warn">🧹 Resetear todo</button>
+  </div>
+</section>
+</main>
+
+<div id="loginModal" class="overlay" style="display:none"><div class="card"><h2>Accede con Google</h2><p id="loginStatus">Inicia sesión para continuar.</p><button id="btnLoginGoogleModal" class="btn primary">🔑 Iniciar con Google</button></div></div>
+
+<script type="module">
+  import {Firebase, Sync, requireGoogleSignIn, Store, Numbering, U} from './app-core.js';
+  await Sync.start(); await requireGoogleSignIn();
+
+  function load(){
+    const s=Store.settings();
+    bizName.value=s.businessName||""; bizTax.value=s.taxPercent??11.5;
+    prefFAC.value=s.prefixes.FAC||"FAC-"; nextFAC.value=s.counters.FAC||1;
+    prefCOT.value=s.prefixes.COT||"COT-"; nextCOT.value=s.counters.COT||1;
+    if(s.logoDataUrl){ bizLogoPrev.src=s.logoDataUrl; bizLogoPrev.style.display="block"; }
+  }
+  load();
+
+  bizLogo.onchange = async ()=>{ const f=bizLogo.files[0]; if(!f) return; const data=await U.fileToDataURL(f); Store.setSettings({logoDataUrl:data}); bizLogoPrev.src=data; bizLogoPrev.style.display="block"; };
+  save.onclick=()=>{ Store.setSettings({ businessName:bizName.value.trim(), taxPercent:U.toNum(bizTax.value||0) }); Numbering.setPrefix("FAC",prefFAC.value||"FAC-"); Numbering.setPrefix("COT",prefCOT.value||"COT-"); Numbering.setCounter("FAC",U.toNum(nextFAC.value||1)); Numbering.setCounter("COT",U.toNum(nextCOT.value||1)); alert("Guardado."); };
+  reset.onclick=()=>{ if(!confirm("Esto borrará toda la data local.")) return; Store.reset(); location.reload(); };
+
+  // Estado de sesión
+  Firebase.onAuthStateChanged(Firebase.auth,(user)=>{
+    authStatus.textContent = user? `Sesión: ${user.displayName||user.email||user.uid}` : "Sesión: sin iniciar";
+  });
+  btnLoginGoogle.onclick = ()=> Firebase.signIn();
+  btnLoginGoogleModal.onclick = ()=> Firebase.signIn();
+  btnLogout.onclick = ()=> Firebase.signOut();
+  btnPush.onclick = ()=> import('./app-core.js').then(m=>m.Sync.push());
+  btnPull.onclick = ()=> import('./app-core.js').then(m=>m.Sync.pull());
+</script>
+<script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"));}</script>
+</body>
+</html>
