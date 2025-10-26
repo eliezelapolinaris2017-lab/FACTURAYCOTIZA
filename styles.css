@@ -1,0 +1,193 @@
+/* =============================================
+   Oasis — Facturación y Cotizaciones
+   Tema Claro Corporativo (Blanco, Dorado, Azul Marino)
+   ============================================= */
+
+/* Paleta de colores */
+:root {
+  --bg: #f9fafc;
+  --panel: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --border: #000000;
+
+  --gold: #d4af37;
+  --gold-dark: #a1821c;
+  --navy: #0b1f3a;
+  --navy-light: #173b70;
+
+  --success: #198754;
+  --error: #dc3545;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  --focus: rgba(255, 217, 89, 0.5);
+}
+
+/* Reset y tipografía */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; padding: 0;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  background: var(--bg); color: var(--text);
+  max-width: 100%; overflow-x: hidden;
+}
+h1,h2,h3 { margin: 0 0 10px 0; color: var(--navy); }
+img { max-width: 100%; display: block; border-radius: 8px; }
+input, select, textarea { font-family: inherit; font-size: 16px; }
+
+/* =============================================
+   Layout general
+   ============================================= */
+main { padding: 10px; }
+.panel {
+  background: var(--panel);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 14px;
+  margin-bottom: 20px;
+}
+
+/* Fila / columnas */
+.row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.col { flex: 1 1 220px; min-width: 180px; }
+
+/* =============================================
+   Encabezado superior
+   ============================================= */
+.topbar {
+  background: linear-gradient(90deg, var(--navy), var(--navy-light));
+  color: #fff;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+.topbar .brand { display: flex; flex-direction: column; }
+.topbar strong { font-size: 18px; }
+.icon-btn {
+  border: 1px solid rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.1);
+  color: #fff; font-size: 20px;
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.icon-btn:hover { background: rgba(255,255,255,0.2); }
+
+/* =============================================
+   Drawer (menú lateral)
+   ============================================= */
+.drawer {
+  position: fixed;
+  top: 0; left: 0; height: 100%; width: 280px;
+  background: var(--navy);
+  color: #fff;
+  transform: translateX(-110%);
+  transition: transform .3s ease;
+  z-index: 1000;
+  display: flex; flex-direction: column;
+}
+.drawer.open { transform: translateX(0); }
+.drawer-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+.drawer-brand { display: flex; align-items: center; gap: 10px; }
+.drawer-brand img { width: 50px; height: 50px; object-fit: contain; background: #fff; }
+.drawer-nav { flex: 1; display: flex; flex-direction: column; padding: 8px; gap: 6px; }
+.drawer-item {
+  background: transparent;
+  color: #fff;
+  border: none;
+  padding: 12px 10px;
+  text-align: left;
+  border-radius: 8px;
+  font-size: 16px;
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer;
+}
+.drawer-item:hover, .drawer-item.active {
+  background: rgba(255, 215, 0, 0.2);
+}
+.drawer-footer {
+  text-align: center; font-size: 12px;
+  padding: 10px; border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+/* =============================================
+   Campos e inputs
+   ============================================= */
+label { font-weight: 600; color: var(--navy); margin-bottom: 5px; display: block; }
+input, select, textarea {
+  width: 100%;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+/* =============================================
+   Botones
+   ============================================= */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px; padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: bold; cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn.primary {
+  background: linear-gradient(180deg, #fff8d1, #ffd84d);
+  border: 2px solid var(--gold-dark);
+  color: #3b2d00;
+}
+.btn.primary:hover { background: linear-gradient(180deg, #fff4b0, #ffcd32); }
+.btn.outline {
+  background: #fff; color: var(--navy);
+  border: 2px solid var(--gold);
+}
+.btn.outline:hover { background: #fff9e5; }
+.btn.warn {
+  background: #ffe5e5; color: var(--error);
+  border: 2px solid #b30000;
+}
+.btn.warn:hover { background: #ffd3d3; }
+
+/* =============================================
+   Tablas
+   ============================================= */
+.table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.table th, .table td {
+  border: 1.5px solid var(--border);
+  padding: 8px;
+  text-align: left;
+}
+.table th {
+  background: #fff8dc;
+  color: #222;
+  font-weight: 700;
+}
+.table tbody tr:hover { background: #fffef2; }
+.table img { width: 50px; height: 50px; object-fit: contain; }
+
+/* =============================================
+   Sumas / totales
+   ============================================= */
+.totals { border-top: 2px dashed var(--border); padding-top: 10px; margin-top: 12px; }
+.sumas { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 16px; font-weight: bold; }
+.sumas strong { color: var(--navy); }
+
+/* =============================================
+   Login Overlay
+   ============================================= */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center
