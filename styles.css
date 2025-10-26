@@ -1,79 +1,184 @@
-:root {
-  --bg: #ffffff;
+/* ==========================================================
+   Oasis UI — estilo corporativo elegante (claro + dorado)
+   Colores: marino #0b1f3a, dorado #d4af37, marfil #fcfcfc
+   Bordes negros en inputs, tarjetas y tablas
+   Mobile-first + toques sutiles de glass y sombra
+   ========================================================== */
+
+:root{
+  --bg: #fcfcfc;
   --text: #0b1f3a;
-  --accent: #d4af37;
+  --muted: #5b6b86;
+  --gold: #d4af37;
+  --gold-2:#e9c85f;
+  --line: #000000;          /* borde negro */
+  --card: #ffffff;
+  --shadow: 0 8px 20px rgba(0,0,0,.08);
+  --radius: 14px;
+  --radius-sm: 10px;
 }
 
-body {
-  font-family: "Segoe UI", Arial, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
+*{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  font-family: "Segoe UI", Inter, Roboto, system-ui, -apple-system, sans-serif;
+  color:var(--text);
+  background: radial-gradient(1200px 800px at 80% -10%, #f3efe4 0%, var(--bg) 60%);
 }
 
-header {
-  background: var(--text);
-  color: white;
-  width: 100%;
-  padding: 1rem 0;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+/* ---------- Topbar / encabezado ---------- */
+header{
+  position: sticky; top:0; z-index:50;
+  background: linear-gradient(180deg, #0b1f3a 0%, #0c254a 100%);
+  color:#fff; text-align:center;
+  padding: 18px 16px;
+  border-bottom: 2px solid #000;
+  box-shadow: 0 6px 16px rgba(0,0,0,.18);
+}
+header h1{ margin:0; font-size: clamp(1.2rem, 2.8vw, 1.8rem); letter-spacing:.3px; }
+header p{ margin:.25rem 0 0; opacity:.8; }
+
+/* ---------- Layout base ---------- */
+main{ padding: clamp(16px, 3.5vw, 28px); }
+.container{
+  max-width: 1080px; margin: 0 auto;
 }
 
-main {
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+/* ---------- Botones ---------- */
+.btn{
+  appearance:none; border:2px solid var(--line);
+  background: var(--gold);
+  color: var(--text); font-weight: 800;
+  border-radius: var(--radius);
+  padding: 12px 18px; font-size: 1rem; line-height:1;
+  box-shadow: 0 3px 0 #000, var(--shadow);
+  cursor: pointer; transition: transform .08s ease, box-shadow .08s ease, background .2s ease;
+  text-decoration:none; display:inline-flex; gap:.6rem; align-items:center; justify-content:center;
+}
+.btn:hover{ background: var(--gold-2); transform: translateY(-1px); }
+.btn:active{ transform: translateY(0); box-shadow: 0 1px 0 #000; }
+
+.btn.primary{ background: var(--gold); color:var(--text); }
+.btn.dark{ background: var(--text); color:#fff; border-color:#000; }
+.btn.dark:hover{ background:#102a52; }
+.btn.ghost{ background: #fff; border:2px solid var(--line); }
+.btn.danger{ background:#fff0f0; border-color:#000; color:#7a0a0a; }
+
+.btn-lg{ padding: 16px 22px; font-size:1.06rem; border-radius: 16px; }
+
+/* Enlaces con aspecto de botón */
+a.btn{ text-decoration:none; }
+
+/* ---------- Tarjetas / contenedores ---------- */
+.card{
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: clamp(14px, 3vw, 22px);
+  backdrop-filter: saturate(120%) blur(2px);
 }
 
-button {
-  font-size: 1.1rem;
-  border: 2px solid var(--text);
-  border-radius: 12px;
-  padding: 0.8rem 1.2rem;
-  background: var(--accent);
-  color: var(--text);
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.2s ease;
+/* ---------- Formularios ---------- */
+label{ display:flex; flex-direction:column; gap:.45rem; margin-bottom:12px; font-weight:700; color:var(--text); }
+.input, input, select, textarea{
+  width:100%;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px 12px;
+  font-size: 1rem; background:#fff; color:var(--text);
+  outline:none;
+  box-shadow: inset 0 1px 0 rgba(0,0,0,.05);
+}
+input::placeholder, textarea::placeholder{ color:#808ea8; }
+input[type="number"]{ appearance: textfield; }
+input:focus, select:focus, textarea:focus{
+  box-shadow: 0 0 0 3px rgba(212,175,55,.25), inset 0 1px 0 rgba(0,0,0,.05);
+  border-color:#000;
 }
 
-button:hover {
-  background: var(--text);
-  color: white;
+/* Rejilla de formulario */
+.form-grid{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+@media (min-width:720px){
+  .form-grid{ grid-template-columns: repeat(3, 1fr); }
 }
 
-footer {
-  margin-top: auto;
-  padding: 1rem;
-  font-size: 0.8rem;
-  background: #eee;
-  width: 100%;
+/* ---------- Tabla de líneas ---------- */
+.tablewrap{ overflow:auto; border-radius: var(--radius); border:2px solid var(--line); background:#fff; }
+.table{
+  width:100%; border-collapse: separate; border-spacing:0;
+}
+.table thead th{
+  position:sticky; top:0; background:#0b1f3a; color:#fff; z-index:1;
+  padding:10px 12px; font-size:.95rem; border-bottom:2px solid #000;
+}
+.table td{
+  padding:10px 12px; border-bottom:1px solid #000000; vertical-align:top; background:#fff;
+}
+.table tr:last-child td{ border-bottom:none; }
+.table .right{ text-align:right; }
+
+/* ---------- Barra de herramientas ---------- */
+.toolbar{
+  display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin: 10px 0 14px;
+}
+.grow{ flex:1 1 220px; }
+
+/* ---------- Totales ---------- */
+.totals{
+  display:grid; grid-template-columns: 1fr 1fr; gap:10px;
+  margin-top: 12px; background:#fff; border:2px solid var(--line); border-radius: var(--radius);
+  padding: 12px;
+}
+.totals > div{
+  display:flex; align-items:center; justify-content:space-between;
+  background:#fff; border:1px dashed #000; border-radius:10px; padding:10px 12px; font-weight:700;
+}
+.totals .total{ grid-column: 1 / -1; background: #0b1f3a; color:#fff; border:2px solid #000; }
+.totals .total b{ font-size:1.15rem; }
+
+/* ---------- Modal sencillo (login u otros) ---------- */
+.modal{
+  position:fixed; inset:0; background:rgba(0,0,0,.55);
+  display:none; align-items:center; justify-content:center; z-index:1000;
+}
+.modal-card{
+  width:min(92vw, 420px); background:#fff; border:2px solid var(--line);
+  border-radius:18px; padding:22px; box-shadow: 0 18px 40px rgba(0,0,0,.22);
+  text-align:center;
+}
+.modal-card h2{ margin:0 0 8px; }
+.modal-card p{ color:var(--muted); margin:0 0 16px; }
+
+/* ---------- Home menu ---------- */
+.home-menu{
+  min-height: calc(100vh - 140px);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+}
+.home-menu .btn{ width:min(92vw, 440px); }
+
+/* ---------- “Volver al inicio” ---------- */
+.back-home{ margin-top:14px; display:inline-flex; gap:.5rem; align-items:center; }
+
+/* ---------- Mensajes / Badges ---------- */
+.badge{
+  display:inline-block; padding:.25rem .6rem; border:2px solid var(--line);
+  border-radius:999px; background:#fff; font-weight:800;
 }
 
-/* Modal de login */
-.modal {
-  display: none;
-  position: fixed;
-  z-index: 999;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.6);
-  justify-content: center;
-  align-items: center;
+/* ---------- Estados ---------- */
+.ok{ color:#1a7f2e; } .warn{ color:#b46900; } .err{ color:#9b1111; }
+
+/* ---------- Impresión (PDF) ---------- */
+@media print{
+  header, .toolbar, .back-home, .home-menu, .modal{ display:none !important; }
+  main{ padding:0; }
+  .card, .tablewrap, .totals{ box-shadow:none; }
+  body{ background:#fff; }
 }
 
-.modal-content {
-  background: white;
-  border-radius: 10px;
-  padding: 2rem;
-  width: 80%;
-  max-width: 400px;
-  text-align: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
