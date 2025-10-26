@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>Oasis — Nuevo</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <link rel="manifest" href="manifest.json"/>
+</head>
+<body>
+  <header class="topbar"><div class="icon">🧾</div><div class="brand"><strong>Oasis</strong><small>Nuevo documento</small></div></header>
+  <nav class="nav">
+    <a href="./index.html" class="active">🧾 Nuevo</a>
+    <a href="./historial.html">📚 Historial</a>
+    <a href="./catalogo.html">📦 Catálogo</a>
+    <a href="./reportes.html">📈 Reportes</a>
+    <a href="./config.html">⚙️ Config</a>
+  </nav>
+
+  <main>
+    <section class="panel">
+      <h2>Documento</h2>
+      <form id="docForm" autocomplete="off">
+        <div class="row">
+          <div class="col"><label>Tipo</label>
+            <select id="docTipo"><option value="FAC">Factura</option><option value="COT">Cotización</option></select>
+          </div>
+          <div class="col"><label>Prefijo</label><input id="docPrefijo"/></div>
+          <div class="col"><label>Número</label><input id="docNumero" inputmode="numeric"/></div>
+          <div class="col"><label>Fecha</label><input id="docFecha" type="date"/></div>
+        </div>
+        <label>Cliente</label><input id="docCliente" placeholder="Nombre o empresa"/>
+
+        <div class="row" style="align-items:center;margin-top:8px">
+          <div class="col"><select id="catalogQuick"><option value="">— del catálogo —</option></select></div>
+          <div><button type="button" id="btnQuickAdd" class="btn">Agregar</button></div>
+          <div><button type="button" id="btnAddLinea" class="btn outline">+ Línea</button></div>
+        </div>
+
+        <table class="table">
+          <thead><tr><th>Ítem</th><th>Detalle</th><th>Precio</th><th>Cant.</th><th>Importe</th><th></th></tr></thead>
+          <tbody id="lineasBody"></tbody>
+        </table>
+
+        <div class="row">
+          <div class="col"><label>Descuento (%)</label><input id="docDesc" type="number" step="0.01"/></div>
+          <div class="col"><label>IVU (%)</label><input id="docTax" type="number" step="0.01"/></div>
+          <div class="col"><label>Método de pago</label>
+            <select id="docPago"><option value="">—</option><option>Efectivo</option><option>Cheque</option><option>ATH</option><option>ATH Móvil</option><option>PayPal</option></select>
+          </div>
+          <div class="col"><label>Ref. Pago</label><input id="docPagoRef"/></div>
+        </div>
+
+        <div class="sumas" id="sumas">
+          <div>Subtotal: <strong id="sSub">$0.00</strong></div>
+          <div>Descuento: <strong id="sDes">$0.00</strong></div>
+          <div>IVU: <strong id="sTax">$0.00</strong></div>
+          <div>Total: <strong id="sTot">$0.00</strong></div>
+        </div>
+
+        <label>Notas</label><textarea id="docNotas" rows="3"></textarea>
+
+        <div class="row" style="margin-top:10px">
+          <button type="button" id="btnBorrador" class="btn">💾 Borrador</button>
+          <button type="submit" id="btnFinal" class="btn primary">🖨️ Guardar y PDF</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <!-- Login modal -->
+  <div id="loginModal" class="overlay" style="display:none">
+    <div class="card">
+      <h2>Accede con Google</h2>
+      <p id="loginStatus">Inicia sesión para continuar.</p>
+      <button id="btnLoginGoogle" class="btn primary">🔑 Iniciar con Google</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import {Firebase, Sync, requireGoogleSignIn, Store, Numbering, Docs, Printer, U} from './app-core.js';
+
+    // arranque: auth + sync
+    await Sync.start();
+    await requireGoogleSignIn();
+
+    // UI init
+    const s = Store.settings();
+    const doc = Docs.empty('FAC');
+    U.byId('docTipo').value = doc.type;
+    U.byId('docPrefijo').value = doc.prefix;
+    U.byId('docNumero').value = doc.number;
+    U.byId('docFecha').value = doc.date;
+    U.byId('docTax').value = s.taxPercent;
+
+    function addRow(l={name:"",desc:"",price:0,qty:1}){
+      const tr=document.createElement('tr');
+      tr.innerHTML = `<td><input class="nm" value="${l.name||""}"></td>
+        <td><input class="ds" value="${l.desc||""}"></td>
+        <td><input class="pr" type="number" step="0.01" value="${Number(l.price||0)}"></td>
+        <td><input class="qt" type="number" step="1" value="${Number(l.qty||1)}"></td>
+        <td class="right imp">$0.00</td>
+        <td><button class="btn warn del" type="button">X</button></td>`;
+      const recalc=()=>{ const p=U.toNum(tr.querySelector('.pr').value), q=U.toNum(tr.querySelector('.qt').value||1);
+        tr.querySelector('.imp').textContent = U.fmtMoney(p*q, s.currency, s.locale); tot(); };
+      tr.querySelectorAll('input').forEach(i=>i.addEventListener('input', recalc));
+      tr.querySelector('.del').onclick=()=>{ tr.remove(); tot(); };
+      U.byId('lineasBody').appendChild(tr); recalc();
+    }
+    function collect(){
+      const lines=[...document.querySelectorAll('#lineasBody tr')].map(tr=>({
+        name:tr.querySelector('.nm').value.trim(),
+        desc:tr.querySelector('.ds').value.trim(),
+        price:U.toNum(tr.querySelector('.pr').value),
+        qty:U.toNum(tr.querySelector('.qt').value||1)
+      })).filter(l=>l.name||l.desc||l.price);
+      return {
+        id: doc.id,
+        type: U.byId('docTipo').value,
+        prefix: U.byId('docPrefijo').value || Numbering.prefix(U.byId('docTipo').value),
+        number: U.toNum(U.byId('docNumero').value) || doc.number,
+        date: U.byId('docFecha').value || U.todayISO(),
+        client: U.byId('docCliente').value.trim(),
+        discountPct: U.toNum(U.byId('docDesc').value||0),
+        taxPct: U.toNum(U.byId('docTax').value||0),
+        paymentMethod: U.byId('docPago').value || "",
+        paymentRef: U.byId('docPagoRef').value.trim() || "",
+        notes: U.byId('docNotas').value.trim(),
+        lines,
+        status: "borrador"
+      };
+    }
+    function tot(){
+      const t=Docs.calc(collect());
+      U.byId('sSub').textContent=U.fmtMoney(t.subtotal,s.currency,s.locale);
+      U.byId('sDes').textContent=U.fmtMoney(t.descAmt,s.currency,s.locale);
+      U.byId('sTax').textContent=U.fmtMoney(t.taxAmt,s.currency,s.locale);
+      U.byId('sTot').textContent=U.fmtMoney(t.total,s.currency,s.locale);
+    }
+    U.byId('btnAddLinea').onclick=()=>addRow();
+    addRow();
+
+    // catálogo quick
+    function fillQuick(){ const it=Store.items(); U.byId('catalogQuick').innerHTML='<option value="">— del catálogo —</option>'+it.map(i=>`<option value="${i.id}">${i.name} (${U.fmtMoney(i.price)})</option>`).join(''); }
+    fillQuick();
+    U.byId('btnQuickAdd').onclick=()=>{ const id=U.byId('catalogQuick').value; if(!id) return; const it=Store.items().find(i=>i.id===id); if(!it) return; addRow({name:it.name,desc:it.desc||"",price:it.price||0,qty:1}); };
+
+    // acciones
+    U.byId('btnBorrador').onclick=async()=>{ const d=collect(); d.status="borrador"; Store.saveDoc(d); await Sync.push(); alert("Borrador guardado."); };
+    U.byId('docForm').onsubmit=async(e)=>{ e.preventDefault(); const d=collect(); d.status="final"; Store.saveDoc(d); await Sync.push(); Printer.open(Printer.docHTML(d)); };
+    // cambios
+    ['docDesc','docTax'].forEach(id=>U.byId(id).addEventListener('input',tot));
+  </script>
+
+  <script>
+    if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"));}
+  </script>
+</body>
+</html>
