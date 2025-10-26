@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Historial — Oasis</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app-core.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>📚 Historial</h1>
+  </header>
+
+  <main class="page">
+    <div id="listado" class="card"></div>
+    <a href="./index.html" class="btn btn-dark">🏠 Volver al inicio</a>
+  </main>
+
+  <script type="module">
+    import { Store, Printer, Docs } from './app-core.js';
+    const div = document.getElementById('listado');
+    const docs = Store.docs();
+
+    if (!docs.length) {
+      div.innerHTML = '<p>No hay documentos registrados.</p>';
+    } else {
+      div.innerHTML = docs.map(d => `
+        <div class="item">
+          <b>${d.prefix}${d.number}</b> — ${d.client || 'Sin cliente'} — ${d.type}
+          <button class="btn-min imprimir" data-id="${d.id}">🖨</button>
+          <button class="btn-min duplicar" data-id="${d.id}">📄</button>
+        </div>
+      `).join('');
+    }
+
+    div.addEventListener('click', e => {
+      if (e.target.classList.contains('imprimir')) {
+        const d = Store.docs().find(x => x.id === e.target.dataset.id);
+        Printer.open(Printer.docHTML(d));
+      }
+      if (e.target.classList.contains('duplicar')) {
+        const orig = Store.docs().find(x => x.id === e.target.dataset.id);
+        const nuevo = Docs.duplicateAs(orig, orig.type === 'COT' ? 'FAC' : 'COT');
+        Store.saveDoc(nuevo);
+        alert('Documento duplicado como ' + nuevo.type);
+        location.reload();
+      }
+    });
+  </script>
+</body>
+</html>
