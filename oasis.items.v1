@@ -1,4 +1,0 @@
-[
-  { "id": "uuid", "name": "Servicio básico", "desc": "Mano de obra", "price": 50 },
-  { "id": "uuid", "name": "Producto estándar", "desc": "Artículo genérico", "price": 25 }
-]
